@@ -116,7 +116,7 @@ const main = CliCommand.make("pr-gen", { repoOption }, ({ repoOption }) =>
         const title = yield* ai.generateTitle(diff);
 
         yield* Effect.logInfo(`\nGenerated PR Title:\n\n${title}\n`);
-        yield* Effect.logInfo("You can now copy this title and use it for your PR.");
+        yield* github.updatePr({ prNumber, repo: nameWithOwner, title });
         break;
       }
     }

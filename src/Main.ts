@@ -31,11 +31,23 @@ const getLocalRepo = Effect.gen(function* () {
   );
 });
 
-const formatReviewAsMarkdown = (review: PrReviewDetails) => {
-  const fileSummaries = review.fileSummaries
+const formatPrDescription = (details: PrDetails) => {
+  const fileSummaries = details.fileSummaries
     .map((summary) => `| ${summary.file} | ${summary.description} |`)
     .join("\n");
 
+  return `${details.description}
+
+<details>
+<summary>Show a summary per file</summary>
+
+| File | Description |
+| ---- | ----------- |
+${fileSummaries}
+</details>`;
+};
+
+const formatReviewAsMarkdown = (review: PrReviewDetails) => {
   const reviewItems = review.review
     .map(
       (item) =>
@@ -44,14 +56,6 @@ const formatReviewAsMarkdown = (review: PrReviewDetails) => {
     .join("\n\n");
 
   return `<!-- pr-github-bot-review -->
-<details>
-<summary>Show a summary per file</summary>
-
-| File | Description |
-| ---- | ----------- |
-${fileSummaries}
-</details>
-
 <details>
 <summary>Review</summary>
 
@@ -116,13 +120,13 @@ const main = CliCommand.make("pr-gen", { repoOption }, ({ repoOption }) =>
         "gh",
         "pr",
         "edit",
-        prNumber,
+        String(prNumber),
         "-R",
         nameWithOwner,
         "--title",
         details.title,
         "--body",
-        details.description,
+        formatPrDescription(details),
       );
       const exitCode = yield* executor.exitCode(updatePrCommand);
 

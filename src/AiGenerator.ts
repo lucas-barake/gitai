@@ -33,11 +33,6 @@ export class PrDetails extends Schema.Class<PrDetails>("PrDetails")(
     description: Schema.String.annotations({
       description: "The PR description",
     }),
-  }),
-) {}
-
-export class PrReviewDetails extends Schema.Class<PrReviewDetails>("PrReviewDetails")(
-  Schema.Struct({
     fileSummaries: Schema.Array(
       Schema.Struct({
         file: Schema.String.annotations({ description: "The file path" }),
@@ -46,6 +41,11 @@ export class PrReviewDetails extends Schema.Class<PrReviewDetails>("PrReviewDeta
         }),
       }),
     ),
+  }),
+) {}
+
+export class PrReviewDetails extends Schema.Class<PrReviewDetails>("PrReviewDetails")(
+  Schema.Struct({
     review: Schema.Array(
       Schema.Struct({
         file: Schema.String.annotations({ description: "The file path for the comment" }),
@@ -72,13 +72,6 @@ const prDetailsResponseSchema = {
       type: "string",
       description: "The PR description",
     },
-  },
-  required: ["title", "description"],
-};
-
-const prReviewResponseSchema = {
-  type: "object",
-  properties: {
     fileSummaries: {
       type: "array",
       description: "A one-sentence summary for each changed file.",
@@ -94,6 +87,13 @@ const prReviewResponseSchema = {
         required: ["file", "description"],
       },
     },
+  },
+  required: ["title", "description", "fileSummaries"],
+};
+
+const prReviewResponseSchema = {
+  type: "object",
+  properties: {
     review: {
       type: "array",
       description:
@@ -115,7 +115,7 @@ const prReviewResponseSchema = {
       },
     },
   },
-  required: ["fileSummaries", "review"],
+  required: ["review"],
 };
 
 export class AiGenerator extends Effect.Service<AiGenerator>()("AiGenerator", {
@@ -151,7 +151,38 @@ export class AiGenerator extends Effect.Service<AiGenerator>()("AiGenerator", {
 
     const generatePrDetails = (diff: string) =>
       Effect.gen(function* () {
-        const prompt = `You are an expert software engineer writing a commit message. Your task is to analyze the provided git diff and generate a concise, professional PR title and description that will be used as the squashed commit message.\n\nYour response should be succinct but thorough—include all important information, but avoid unnecessary verbosity.\n\n## Format Requirements\n\n### Title (Subject Line)\n- **Follow the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification:** \`type(scope): subject\`.\n  - \`type\`: Must be one of \`feat\`, \`fix\`, \`refactor\`, \`docs\`, \`style\`, \`test\`, or \`chore\`.\n  - \`scope\` (optional): The module or component affected (e.g., \`api\`, \`auth\`, \`ui\`).\n  - \`subject\`: A short, imperative-mood summary (e.g., "add user login endpoint"). Do **not** capitalize or end with a period.\n\n### Description (Body)\n- Begin with a brief paragraph explaining the **why** behind the change. What problem does it solve or what feature does it add?\n- Follow with a bulleted list under a \`Changes:\` heading that details the specific modifications. **Group related changes together by relevance or semantics, rather than listing all changes as a flat list.** You must reference the specific files affected, which can be found in the \`diff --git a/...\` lines of the provided diff.\n- Include a section titled \`How to Test / What to Expect\` that provides an overview of how to test or use the changes. Clearly describe what was seen before and what should be expected now, so reviewers know how to verify the change.\n\n## Constraints\n- The tone must be professional and direct.\n- Do **not** use emojis.\n- The title must **not** contain redundant phrases like "This PR" or "This commit".\n\n---\n\n## [Begin Task]\nAnalyze the following git diff and generate the PR title and description:\n${diff}`;
+        const prompt = `You are an expert software engineer writing a commit message. Your task is to analyze the provided git diff and generate a concise, professional PR title and description that will be used as the squashed commit message.
+
+Your response should be succinct but thorough—include all important information, but avoid unnecessary verbosity.
+
+## Format Requirements
+
+### Title (Subject Line)
+- **Follow the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification:** \`type(scope): subject\`.
+  - \`type\`: Must be one of \`feat\`, \`fix\`, \`refactor\`, \`docs\`, \`style\`, \`test\`, or \`chore\`.
+  - \`scope\` (optional): The module or component affected (e.g., \`api\`, \`auth\`, \`ui\`).
+  - \`subject\`: A short, imperative-mood summary (e.g., "add user login endpoint"). Do **not** capitalize or end with a period.
+
+### Description (Body)
+- Begin with a brief paragraph explaining the **why** behind the change. What problem does it solve or what feature does it add?
+- Include a section titled \`How to Test / What to Expect\` that provides an overview of how to test or use the changes. Clearly describe what was seen before and what should be expected now, so reviewers know how to verify the change.
+
+## Constraints
+- The tone must be professional and direct.
+- Do **not** use emojis.
+- The title must **not** contain redundant phrases like "This PR" or "This commit".
+
+## Output Structure (JSON)
+- **title**: A string for the PR title.
+- **description**: A string for the main body of the PR description.
+- **fileSummaries**: An array of objects, where each object has:
+  - \`file\`: The file path.
+  - \`description\`: A one-sentence summary of the changes in the file.
+
+---
+
+## [Begin Task]
+Analyze the following git diff and generate the PR title, description, and file summaries in the specified JSON format:\n${diff}`;
 
         const response = yield* httpClient
           .post(
@@ -190,7 +221,6 @@ Your feedback must be focused on the following areas:
 - **JSON Output**: Your response must be in JSON format.
 
 ## Output Structure
-- **fileSummaries**: Provide a concise, one-sentence summary for each changed file.
 - **review**: A list of considerations and potential improvements. For each item, provide:
   - \`file\`: The file path.
   - \`line\`: The line number.

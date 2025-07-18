@@ -8,6 +8,8 @@ import { cliLogger } from "./CliLogger.js";
 import { GitClient } from "./GitClient.js";
 import { GitHubClient } from "./GitHubClient.js";
 
+const REVIEW_COMMENT_TAG = "<!-- git-gen-review -->";
+
 const repoOption = Options.text("repo").pipe(
   Options.optional,
   Options.withDescription(
@@ -39,7 +41,7 @@ const formatReviewAsMarkdown = (review: PrReviewDetails) => {
     )
     .join("\n\n");
 
-  return `<!-- pr-github-bot-review -->\n<details>\n<summary>Review</summary>\n\n${reviewItems}\n</details>`;
+  return `${REVIEW_COMMENT_TAG}\n<details>\n<summary>Review</summary>\n\n${reviewItems}\n</details>`;
 };
 
 const prCommand = CliCommand.make("gh", { repoOption }, ({ repoOption }) =>
@@ -93,7 +95,7 @@ const prCommand = CliCommand.make("gh", { repoOption }, ({ repoOption }) =>
         const comments = yield* github.listPrComments(prNumber, nameWithOwner);
 
         const previousComment = comments.find((comment) =>
-          comment.body.includes("<!-- pr-github-bot-review -->"),
+          comment.body.includes(REVIEW_COMMENT_TAG),
         );
 
         const review = yield* ai.generateReview(diff);

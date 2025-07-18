@@ -10,7 +10,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "<PLACEHOLDER>"
+    "url": "https://github.com/lucas-barake/git-gen"
   },
   "publishConfig": {
     "access": "public",

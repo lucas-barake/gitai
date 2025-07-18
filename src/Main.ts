@@ -1,7 +1,8 @@
 import { Command as CliCommand, Options, Prompt } from "@effect/cli";
 import { BunContext, BunRuntime } from "@effect/platform-bun";
 import { Effect, Logger, Option } from "effect";
-import { AiGenerator, PrDetails, PrReviewDetails } from "./AiGenerator.js";
+import type { PrDetails, PrReviewDetails } from "./AiGenerator.js";
+import { AiGenerator } from "./AiGenerator.js";
 import { cliLogger } from "./CliLogger.js";
 import { GitHubClient } from "./GitHubClient.js";
 

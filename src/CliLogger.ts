@@ -35,44 +35,42 @@ const logLevelColors: Record<LogLevel.LogLevel["_tag"], ReadonlyArray<string>> =
 
 const cliLoggerTty = (options: { readonly colors: boolean }) => {
   const color = options.colors ? withColor : withColorNoop;
-  return Logger.make<unknown, void>(
-    ({ annotations, cause, context, logLevel, message: message_ }) => {
-      const log = console.log;
+  return Logger.make<unknown, void>(({ annotations, cause, logLevel, message: message_ }) => {
+    const log = console.log;
 
-      const message = Array.ensure(message_);
+    const message = Array.ensure(message_);
 
-      const logLevelLabel = color(logLevel.label.padEnd(5), ...logLevelColors[logLevel._tag]);
-      let firstLine = `${logLevelLabel}:`;
-      let messageIndex = 0;
-      if (message.length > 0) {
-        const firstMaybeString = Inspectable.toStringUnknown(message[0]);
-        if (typeof firstMaybeString === "string") {
-          firstLine += ` ${color(firstMaybeString, colors.bold, colors.cyan)}`;
-          messageIndex++;
-        }
+    const logLevelLabel = color(logLevel.label.padEnd(5), ...logLevelColors[logLevel._tag]);
+    let firstLine = `${logLevelLabel}:`;
+    let messageIndex = 0;
+    if (message.length > 0) {
+      const firstMaybeString = Inspectable.toStringUnknown(message[0]);
+      if (typeof firstMaybeString === "string") {
+        firstLine += ` ${color(firstMaybeString, colors.bold, colors.cyan)}`;
+        messageIndex++;
       }
+    }
 
-      log(firstLine);
-      console.group();
+    log(firstLine);
+    console.group();
 
-      if (!Cause.isEmpty(cause)) {
-        log(Cause.pretty(cause, { renderErrorCause: true }));
+    if (!Cause.isEmpty(cause)) {
+      log(Cause.pretty(cause, { renderErrorCause: true }));
+    }
+
+    if (messageIndex < message.length) {
+      for (; messageIndex < message.length; messageIndex++) {
+        log(Inspectable.redact(message[messageIndex]));
       }
+    }
 
-      if (messageIndex < message.length) {
-        for (; messageIndex < message.length; messageIndex++) {
-          log(Inspectable.redact(message[messageIndex]));
-        }
+    if (HashMap.size(annotations) > 0) {
+      for (const [key, value] of annotations) {
+        log(color(`${key}:`, colors.bold, colors.white), Inspectable.redact(value));
       }
-
-      if (HashMap.size(annotations) > 0) {
-        for (const [key, value] of annotations) {
-          log(color(`${key}:`, colors.bold, colors.white), Inspectable.redact(value));
-        }
-      }
-      console.groupEnd();
-    },
-  );
+    }
+    console.groupEnd();
+  });
 };
 
 export const cliLogger = cliLoggerTty({ colors: true });

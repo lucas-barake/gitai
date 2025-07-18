@@ -7,17 +7,17 @@ A command-line tool that acts as a general-purpose AI assistant for your git wor
 This CLI tool connects to the GitHub (`gh`) CLI and a generative AI to perform two main functions:
 
 1.  **GitHub Interaction (`gh` subcommand):**
-    *   Detects the current repository you are in.
-    *   Starts an interactive session, prompting for a pull request number.
-    *   Fetches the code changes (diff) for the specified PR.
-    *   Asks whether you want to generate PR details (title/description) or a code review.
-    *   Sends the diff to a generative AI for analysis.
-    *   Updates the pull request on GitHub with the AI-generated content or posts a review as a comment.
+    - Detects the current repository you are in.
+    - Starts an interactive session, prompting for a pull request number.
+    - Fetches the code changes (diff) for the specified PR.
+    - Asks whether you want to generate PR details (title/description) or a code review.
+    - Sends the diff to a generative AI for analysis.
+    - Updates the pull request on GitHub with the AI-generated content or posts a review as a comment.
 
 2.  **Commit Message Generation (`commit` subcommand):**
-    *   Gets the staged diff from your local git repository.
-    *   Sends the diff to a generative AI to generate a conventional commit message.
-    *   Prompts for confirmation before committing the changes with the generated message.
+    - Gets the staged diff from your local git repository.
+    - Sends the diff to a generative AI to generate a conventional commit message.
+    - Prompts for confirmation before committing the changes with the generated message.
 
 ## Prerequisites
 
@@ -30,11 +30,13 @@ Before you begin, ensure you have the following installed and configured:
 
 ## Configuration
 
-This tool requires a Google AI API key to function.
+This tool requires a Google AI API key to function. You must set the `GOOGLE_AI_API_KEY` environment variable for the application to work.
 
-```env
-GOOGLE_AI_API_KEY="your-api-key-here"
+```bash
+export GOOGLE_AI_API_KEY="your-api-key-here"
 ```
+
+You can add this line to your shell's configuration file (e.g., `~/.zshrc`, `~/.bashrc`) to make it permanent.
 
 ## Installation
 
@@ -54,10 +56,10 @@ pnpm install
 
 ### 3\. Make the Script Executable
 
-Grant execute permissions to the main script file. This allows the system to run it directly.
+Grant execute permissions to the main script file, `src/Main.ts`. This allows the system to run it directly via the symbolic link.
 
 ```bash
-chmod +x git-gen
+chmod +x src/Main.ts
 ```
 
 ### 4\. Create the Global Link

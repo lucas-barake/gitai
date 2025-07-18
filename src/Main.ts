@@ -90,17 +90,11 @@ const prCommand = CliCommand.make("gh", { repoOption }, ({ repoOption }) =>
         break;
       }
       case "review": {
-        yield* Effect.log("Generating review...");
-
         const comments = yield* github.listPrComments(prNumber, nameWithOwner);
 
         const previousComment = comments.find((comment) =>
           comment.body.includes("<!-- pr-github-bot-review -->"),
         );
-
-        if (previousComment) {
-          yield* github.deletePrComment(previousComment.id, nameWithOwner);
-        }
 
         const review = yield* ai.generateReview(diff);
 
@@ -108,6 +102,11 @@ const prCommand = CliCommand.make("gh", { repoOption }, ({ repoOption }) =>
         yield* Effect.log(`\nGenerated Review:\n${markdown}`);
 
         yield* github.addPrComment({ prNumber, repo: nameWithOwner, body: markdown });
+
+        if (previousComment) {
+          yield* github.deletePrComment(previousComment.id, nameWithOwner);
+        }
+
         break;
       }
       case "title": {

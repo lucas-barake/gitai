@@ -341,6 +341,7 @@ Analyze the following git diff and generate the PR title in the specified JSON f
 
     const generateReview = (diff: string) =>
       Effect.gen(function* () {
+        yield* Effect.log("Generating review...");
         const prompt = `You are an expert code reviewer with a keen eye for detail. Your task is to analyze the provided git diff and generate a constructive review.
 
 ## Review Focus

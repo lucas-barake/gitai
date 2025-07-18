@@ -1,5 +1,6 @@
 import { Command, CommandExecutor } from "@effect/platform";
 import { Effect, Schema } from "effect";
+import { constant } from "effect/Function";
 
 const PrComment = Schema.Struct({
   id: Schema.String,
@@ -74,20 +75,27 @@ export class GitHubClient extends Effect.Service<GitHubClient>()("GitHubClient",
 
     const listPrComments = (prNumber: string, repo: string) =>
       Effect.gen(function* () {
+        yield* Effect.log(`Listing comments for PR #${prNumber}...`);
         const listCommentsCommand = Command.make(
           "gh",
           "pr",
-          "comment",
+          "view",
           prNumber,
           "-R",
           repo,
           "--json",
-          "id,body",
+          "comments",
         );
 
         return yield* executor.string(listCommentsCommand).pipe(
-          Effect.flatMap(Schema.decode(Schema.parseJson(PrCommentArray))),
-          Effect.catchAll(() => Effect.succeed([])),
+          Effect.flatMap(
+            Schema.decode(Schema.parseJson(Schema.Struct({ comments: PrCommentArray }))),
+          ),
+          Effect.map((_) => _.comments),
+          Effect.tapError((error) =>
+            Effect.logWarning(`Failed to list comments for PR #${prNumber}: ${error.message}`),
+          ),
+          Effect.orElseSucceed(constant([])),
         );
       }).pipe(Effect.withSpan("GitHubClient.listPrComments"));
 
@@ -97,7 +105,7 @@ export class GitHubClient extends Effect.Service<GitHubClient>()("GitHubClient",
       readonly body: string;
     }) =>
       Effect.gen(function* () {
-        yield* Effect.log(`Adding review comment to PR #${args.prNumber} on GitHub...`);
+        yield* Effect.log(`Adding new review comment to PR #${args.prNumber}...`);
         const addCommentCommand = Command.make(
           "gh",
           "pr",
@@ -121,17 +129,17 @@ export class GitHubClient extends Effect.Service<GitHubClient>()("GitHubClient",
         }
       }).pipe(Effect.withSpan("GitHubClient.addPrComment"));
 
-    const deletePrComment = (commentId: string, repo: string) =>
+    const deletePrComment = (commentId: string, _repo: string) =>
       Effect.gen(function* () {
-        yield* Effect.log(`Deleting previous review comment...`);
+        yield* Effect.log(`Deleting stale review comment...`);
         const deleteCommentCommand = Command.make(
           "gh",
-          "pr",
-          "comment",
-          "--delete",
-          commentId,
-          "-R",
-          repo,
+          "api",
+          "graphql",
+          "-f",
+          `id=${commentId}`,
+          "-f",
+          "query=mutation($id: ID!) { deleteIssueComment(input: {id: $id}) { clientMutationId } }",
         );
         const exitCode = yield* executor.exitCode(deleteCommentCommand);
 

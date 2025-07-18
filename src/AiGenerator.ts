@@ -5,7 +5,7 @@ import {
   HttpClientRequest,
   HttpClientResponse,
 } from "@effect/platform";
-import { Config, Effect, Redacted, Schema } from "effect";
+import { Config, Effect, Redacted, Schedule, Schema } from "effect";
 
 const makeSchemaFromResponse = <A, I>(schema: Schema.Schema<A, I>) =>
   Schema.Struct({
@@ -118,6 +118,24 @@ const prReviewResponseSchema = {
   required: ["review"],
 };
 
+const TITLE_PROMPT_SECTION = `### Title (Subject Line)
+- **Follow the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification:** \`type(scope): subject\`.
+  - **\`type\`**: Must be one of \`feat\`, \`fix\`, \`refactor\`, \`docs\`, \`style\`, \`test\`, or \`chore\`.
+    - **Prioritize \`feat\`**: If the changes introduce a new user-facing capability, even if it's part of a refactor, use \`feat\`. A \`refactor\` should only be used when the primary purpose is improving internal code structure without changing observable behavior.
+  - **\`scope\` (optional)**: Be specific. Derive the scope from the primary feature or area affected. Look at the file paths in the diff (e.g., \`packages/server/src/public/experiments/...\`) to determine the most relevant scope (e.g., \`experiments\`, \`auth\`, \`billing\`). Avoid generic scopes like \`server\` or \`client\` if a more specific one is available.
+  - **\`subject\`**: A short, imperative-mood summary of the *most impactful change*. For a \`feat\`, describe the new capability. For a \`fix\`, describe what was fixed. Avoid generic verbs like "update" or "improve" if possible. Focus on what the change *does* for the user or the system.`;
+
+const prTitleResponseSchema = {
+  type: "object",
+  properties: {
+    title: {
+      type: "string",
+      description: "The PR title",
+    },
+  },
+  required: ["title"],
+};
+
 export class AiGenerator extends Effect.Service<AiGenerator>()("AiGenerator", {
   dependencies: [FetchHttpClient.layer],
   effect: Effect.gen(function* () {
@@ -126,6 +144,10 @@ export class AiGenerator extends Effect.Service<AiGenerator>()("AiGenerator", {
       HttpClient.mapRequest((request) =>
         request.pipe(HttpClientRequest.setHeader("x-goog-api-key", Redacted.value(apiKey))),
       ),
+      HttpClient.retryTransient({
+        times: 3,
+        schedule: Schedule.exponential("1 second", 2),
+      }),
     );
 
     /**
@@ -157,11 +179,7 @@ Your response should be succinct but thorough—include all important informatio
 
 ## Format Requirements
 
-### Title (Subject Line)
-- **Follow the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification:** \`type(scope): subject\`.
-  - \`type\`: Must be one of \`feat\`, \`fix\`, \`refactor\`, \`docs\`, \`style\`, \`test\`, or \`chore\`.
-  - \`scope\` (optional): The module or component affected (e.g., \`api\`, \`auth\`, \`ui\`).
-  - \`subject\`: A short, imperative-mood summary (e.g., "add user login endpoint"). Do **not** capitalize or end with a period.
+${TITLE_PROMPT_SECTION}
 
 ### Description (Body)
 - Begin with a brief paragraph explaining the **why** behind the change. What problem does it solve or what feature does it add?
@@ -204,6 +222,51 @@ Analyze the following git diff and generate the PR title, description, and file 
 
         return response.candidates[0].content.parts[0].parsed;
       }).pipe(Effect.withSpan("AiGenerator.generatePrDetailsFromDiff"));
+
+    const generateTitle = (diff: string) =>
+      Effect.gen(function* () {
+        const prompt = `You are an expert software engineer writing a commit message. Your task is to analyze the provided git diff and generate a concise, professional PR title.
+
+## Format Requirements
+
+${TITLE_PROMPT_SECTION}
+
+## Constraints
+- The tone must be professional and direct.
+- Do **not** use emojis.
+- The title must **not** contain redundant phrases like "This PR" or "This commit".
+
+## Output Structure (JSON)
+- **title**: A string for the PR title.
+
+---
+
+## [Begin Task]
+Analyze the following git diff and generate the PR title in the specified JSON format:\n${diff}`;
+
+        const response = yield* httpClient
+          .post(
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent",
+            {
+              body: HttpBody.unsafeJson({
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: {
+                  response_mime_type: "application/json",
+                  response_schema: prTitleResponseSchema,
+                },
+              }),
+            },
+          )
+          .pipe(
+            Effect.flatMap(
+              HttpClientResponse.schemaBodyJson(
+                makeSchemaFromResponse(Schema.Struct({ title: Schema.String })),
+              ),
+            ),
+          );
+
+        return response.candidates[0].content.parts[0].parsed.title;
+      }).pipe(Effect.withSpan("AiGenerator.generateTitleFromDiff"));
 
     const generateReview = (diff: string) =>
       Effect.gen(function* () {
@@ -255,8 +318,21 @@ Analyze the following git diff and generate the review in the specified JSON for
       }).pipe(Effect.withSpan("AiGenerator.generateReviewFromDiff"));
 
     return {
-      generatePrDetails: (diff: string) => filterDiff(diff).pipe(Effect.andThen(generatePrDetails)),
-      generateReview: (diff: string) => filterDiff(diff).pipe(Effect.andThen(generateReview)),
+      generatePrDetails: (diff: string) =>
+        filterDiff(diff).pipe(
+          Effect.andThen(generatePrDetails),
+          Effect.orDieWith((error) => `Failed to generate PR details: ${error.message}`),
+        ),
+      generateTitle: (diff: string) =>
+        filterDiff(diff).pipe(
+          Effect.andThen(generateTitle),
+          Effect.orDieWith((error) => `Failed to generate PR title: ${error.message}`),
+        ),
+      generateReview: (diff: string) =>
+        filterDiff(diff).pipe(
+          Effect.andThen(generateReview),
+          Effect.orDieWith((error) => `Failed to generate review: ${error.message}`),
+        ),
     } as const;
   }),
 }) {}

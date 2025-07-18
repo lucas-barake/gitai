@@ -1,5 +1,4 @@
-import type { Schema, Record } from "effect";
-import { Effect, JSONSchema, SchemaAST } from "effect";
+import { Effect } from "effect";
 import { AiLanguageModel } from "./AiLanguageModel.js";
 import { CommitMessage, PrDetails, PrReviewDetails, PrTitle } from "./internal/schemas.js";
 import {
@@ -8,45 +7,9 @@ import {
   makeReviewPrompt,
   makeTitlePrompt,
 } from "./internal/prompts.js";
-import type { JsonSchema7Object, JsonSchema7Root } from "effect/JSONSchema";
+import { makeOpenApiSchema } from "./internal/make-open-api-schema.js";
 
 export const REVIEW_COMMENT_TAG = "<!-- git-gen-review -->";
-
-const removeAdditionalProperties = (schema: unknown): unknown => {
-  if (Array.isArray(schema)) {
-    return schema.map(removeAdditionalProperties);
-  }
-  if (schema !== null && typeof schema === "object") {
-    const newSchema = { ...(schema as object) };
-    delete (newSchema as Partial<JsonSchema7Object>).additionalProperties;
-
-    for (const key in newSchema) {
-      (newSchema as any)[key] = removeAdditionalProperties((newSchema as any)[key]);
-    }
-    return newSchema;
-  }
-  return schema;
-};
-
-const isParseJsonTransformation = (ast: SchemaAST.AST): boolean =>
-  ast.annotations[SchemaAST.SchemaIdAnnotationId] === SchemaAST.ParseJsonSchemaId;
-
-const makeOpenApiSchema = <A, I, R>(schema: Schema.Schema<A, I, R>): JsonSchema7Root => {
-  const definitions: Record<string, any> = {};
-
-  const ast =
-    SchemaAST.isTransformation(schema.ast) && isParseJsonTransformation(schema.ast.from)
-      ? schema.ast.to
-      : schema.ast;
-
-  const jsonSchema = JSONSchema.fromAST(ast, {
-    definitions,
-    target: "openApi3.1",
-    topLevelReferenceStrategy: "skip",
-  });
-
-  return removeAdditionalProperties(jsonSchema) as JsonSchema7Root;
-};
 
 export class AiGenerator extends Effect.Service<AiGenerator>()("AiGenerator", {
   dependencies: [AiLanguageModel.Default],

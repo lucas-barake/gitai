@@ -32,11 +32,37 @@ Before you begin, ensure you have the following installed and configured:
 
 This tool requires a Google AI API key to function. You must set the `GOOGLE_AI_API_KEY` environment variable for the application to work.
 
+### Basic Setup (for testing)
+
+You can export the variable in your shell. Note that this is not the most secure method for long-term use.
+
 ```bash
 export GOOGLE_AI_API_KEY="your-api-key-here"
 ```
 
-You can add this line to your shell's configuration file (e.g., `~/.zshrc`, `~/.bashrc`) to make it permanent.
+To make it persist between sessions, you can add this line to your shell's configuration file (e.g., `~/.zshrc`, `~/.bashrc`).
+
+### Recommended: Using a Secret Manager
+
+For better security, it is highly recommended to use a secret manager to handle your API key. This prevents storing secrets in plain text.
+
+The application will automatically read the environment variable if it's provided by a secret manager's CLI.
+
+**Example with Bitwarden CLI:**
+
+```bash
+# The `bw run` command injects the secret into the command's environment
+bw run -- git-gen gh
+```
+
+**Example with Doppler:**
+
+```bash
+# The `doppler run` command works similarly
+doppler run -- git-gen commit
+```
+
+Using this wrapper pattern is the most secure way to provide credentials to the application.
 
 ## Installation
 

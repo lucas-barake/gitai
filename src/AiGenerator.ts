@@ -7,6 +7,8 @@ import {
 } from "@effect/platform";
 import { Config, Effect, Redacted, Schedule, Schema } from "effect";
 
+export const REVIEW_COMMENT_TAG = "<!-- git-gen-review -->";
+
 const makeSchemaFromResponse = <A, I>(schema: Schema.Schema<A, I>) =>
   Schema.Struct({
     candidates: Schema.Tuple(
@@ -25,7 +27,7 @@ const makeSchemaFromResponse = <A, I>(schema: Schema.Schema<A, I>) =>
     ),
   });
 
-export class PrDetails extends Schema.Class<PrDetails>("PrDetails")(
+class PrDetails extends Schema.Class<PrDetails>("PrDetails")(
   Schema.Struct({
     title: Schema.String.annotations({
       description: "The PR title",
@@ -169,6 +171,33 @@ export class AiGenerator extends Effect.Service<AiGenerator>()("AiGenerator", {
         schedule: Schedule.exponential("1 second", 2),
       }),
     );
+
+    const formatPrDescription = (details: PrDetails) => {
+      const fileSummaries = details.fileSummaries
+        .map((summary) => `| ${summary.file} | ${summary.description} |`)
+        .join("\n");
+
+      return `${details.description}
+
+<details>
+<summary>Show a summary per file</summary>
+
+| File | Description |
+| ---- | ----------- |
+${fileSummaries}
+</details>`;
+    };
+
+    const formatReviewAsMarkdown = (review: PrReviewDetails) => {
+      const reviewItems = review.review
+        .map(
+          (item) =>
+            `**${item.file}:${item.line}**\n* [${item.category}] ${item.comment}\n\`\`\`\n${item.codeSnippet}\n\`\`\``,
+        )
+        .join("\n\n");
+
+      return `${REVIEW_COMMENT_TAG}\n<details>\n<summary>Review</summary>\n\n${reviewItems}\n</details>`;
+    };
 
     /**
      * Removes configuration files from diff to focus AI analysis on code changes
@@ -394,6 +423,10 @@ Analyze the following git diff and generate the review in the specified JSON for
         filterDiff(diff).pipe(
           Effect.andThen(generatePrDetails),
           Effect.orDieWith((error) => `Failed to generate PR details: ${error.message}`),
+          Effect.map((details) => ({
+            title: details.title,
+            body: formatPrDescription(details),
+          })),
         ),
       generateCommitMessage: (diff: string) =>
         filterDiff(diff).pipe(
@@ -409,6 +442,7 @@ Analyze the following git diff and generate the review in the specified JSON for
         filterDiff(diff).pipe(
           Effect.andThen(generateReview),
           Effect.orDieWith((error) => `Failed to generate review: ${error.message}`),
+          Effect.map(formatReviewAsMarkdown),
         ),
     } as const;
   }),

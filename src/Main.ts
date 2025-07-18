@@ -2,13 +2,10 @@
 import { Command as CliCommand, Options, Prompt } from "@effect/cli";
 import { BunContext, BunRuntime } from "@effect/platform-bun";
 import { Effect, Logger, Option, String } from "effect";
-import type { PrDetails, PrReviewDetails } from "./AiGenerator.js";
-import { AiGenerator } from "./AiGenerator.js";
+import { AiGenerator, REVIEW_COMMENT_TAG } from "./AiGenerator.js";
 import { cliLogger } from "./CliLogger.js";
 import { GitClient } from "./GitClient.js";
 import { GitHubClient } from "./GitHubClient.js";
-
-const REVIEW_COMMENT_TAG = "<!-- git-gen-review -->";
 
 const repoOption = Options.text("repo").pipe(
   Options.optional,
@@ -16,33 +13,6 @@ const repoOption = Options.text("repo").pipe(
     "Specify a custom repository (e.g., 'owner/repo'). Defaults to local detection.",
   ),
 );
-
-const formatPrDescription = (details: PrDetails) => {
-  const fileSummaries = details.fileSummaries
-    .map((summary) => `| ${summary.file} | ${summary.description} |`)
-    .join("\n");
-
-  return `${details.description}
-
-<details>
-<summary>Show a summary per file</summary>
-
-| File | Description |
-| ---- | ----------- |
-${fileSummaries}
-</details>`;
-};
-
-const formatReviewAsMarkdown = (review: PrReviewDetails) => {
-  const reviewItems = review.review
-    .map(
-      (item) =>
-        `**${item.file}:${item.line}**\n* [${item.category}] ${item.comment}\n\`\`\`\n${item.codeSnippet}\n\`\`\``,
-    )
-    .join("\n\n");
-
-  return `${REVIEW_COMMENT_TAG}\n<details>\n<summary>Review</summary>\n\n${reviewItems}\n</details>`;
-};
 
 const prCommand = CliCommand.make("gh", { repoOption }, ({ repoOption }) =>
   Effect.gen(function* () {
@@ -87,7 +57,7 @@ const prCommand = CliCommand.make("gh", { repoOption }, ({ repoOption }) =>
           prNumber,
           repo: nameWithOwner,
           title: details.title,
-          body: formatPrDescription(details),
+          body: details.body,
         });
         break;
       }
@@ -98,9 +68,8 @@ const prCommand = CliCommand.make("gh", { repoOption }, ({ repoOption }) =>
           comment.body.includes(REVIEW_COMMENT_TAG),
         );
 
-        const review = yield* ai.generateReview(diff);
+        const markdown = yield* ai.generateReview(diff);
 
-        const markdown = formatReviewAsMarkdown(review);
         yield* Effect.log(`\nGenerated Review:\n${markdown}`);
 
         yield* github.addPrComment({ prNumber, repo: nameWithOwner, body: markdown });

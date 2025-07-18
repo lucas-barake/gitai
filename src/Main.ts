@@ -81,14 +81,7 @@ const main = CliCommand.make("pr-gen", { repoOption }, ({ repoOption }) =>
     });
 
     yield* Effect.logInfo(`Fetching diff for PR #${prNumber}...`);
-    const getDiffCommand = PlatformCommand.make(
-      "gh",
-      "pr",
-      "diff",
-      String(prNumber),
-      "-R",
-      nameWithOwner,
-    );
+    const getDiffCommand = PlatformCommand.make("gh", "pr", "diff", prNumber, "-R", nameWithOwner);
     const diff = yield* executor
       .string(getDiffCommand)
       .pipe(
@@ -123,7 +116,7 @@ const main = CliCommand.make("pr-gen", { repoOption }, ({ repoOption }) =>
         "gh",
         "pr",
         "edit",
-        String(prNumber),
+        prNumber,
         "-R",
         nameWithOwner,
         "--title",
@@ -189,7 +182,7 @@ const main = CliCommand.make("pr-gen", { repoOption }, ({ repoOption }) =>
         "gh",
         "pr",
         "comment",
-        String(prNumber),
+        prNumber,
         "-R",
         nameWithOwner,
         "--body",

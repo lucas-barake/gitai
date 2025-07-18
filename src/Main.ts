@@ -2,7 +2,7 @@ import { Command as CliCommand, Options, Prompt } from "@effect/cli";
 import { Command as PlatformCommand, CommandExecutor } from "@effect/platform";
 import { BunContext, BunRuntime } from "@effect/platform-bun";
 import { Effect, Option, Schema } from "effect";
-import { AiGenerator, PrReviewDetails } from "./AiGenerator.js";
+import { AiGenerator, PrDetails, PrReviewDetails } from "./AiGenerator.js";
 
 const repoOption = Options.text("repo").pipe(
   Options.optional,

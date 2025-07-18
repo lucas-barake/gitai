@@ -165,6 +165,7 @@ Your response should be succinct but thorough—include all important informatio
 
 ### Description (Body)
 - Begin with a brief paragraph explaining the **why** behind the change. What problem does it solve or what feature does it add?
+- **Follow with a bulleted list under a \`Changes:\` heading that tells the story of the PR.** This section should explain the changes from a feature or conceptual perspective. Group related changes semantically (e.g., "Refactored Authentication Flow," "Updated User Profile UI"). Explain *what* was done at a high level, not just what each file was changed for. This should provide a human-centric overview.
 - Include a section titled \`How to Test / What to Expect\` that provides an overview of how to test or use the changes. Clearly describe what was seen before and what should be expected now, so reviewers know how to verify the change.
 
 ## Constraints
@@ -174,8 +175,8 @@ Your response should be succinct but thorough—include all important informatio
 
 ## Output Structure (JSON)
 - **title**: A string for the PR title.
-- **description**: A string for the main body of the PR description.
-- **fileSummaries**: An array of objects, where each object has:
+- **description**: A string for the main body of the PR description, which **must include the high-level, narrative-style \`Changes:\` list** described above.
+- **fileSummaries**: A separate, granular list. For each object, provide a one-sentence summary of the *specific* changes within that file. This is for a detailed file-by-file view, distinct from the main description.
   - \`file\`: The file path.
   - \`description\`: A one-sentence summary of the changes in the file.
 

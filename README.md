@@ -132,3 +132,33 @@ git-gen gh --help
 ```bash
 git-gen commit --help
 ```
+
+## Building for Production
+
+For a more permanent and performant setup, you can compile the application into a single binary.
+
+### 1. Build the Binary
+
+Run the build script to compile the application:
+
+```bash
+bun run build
+```
+
+This will create a `git-gen` executable file in the project root.
+
+### 2. Use the Binary
+
+You can now run the compiled application directly:
+
+```bash
+./git-gen --help
+```
+
+To make it available globally, you can move it to a directory in your system's `PATH`, such as `/usr/local/bin`:
+
+```bash
+mv git-gen /usr/local/bin/
+```
+
+Now you can run `git-gen` from anywhere.

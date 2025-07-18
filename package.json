@@ -24,7 +24,7 @@
     "coverage": "vitest --coverage",
     "pr-gen": "bun run src/Main.ts",
     "format": "prettier --write \"**/*.{ts,mjs,json,md}\"",
-    "build": "bun build src/Main.ts --compile --outfile pr-gen"
+    "build": "bun build src/Main.ts --compile --outfile git-gen"
   },
   "dependencies": {
     "@effect/ai": "latest",

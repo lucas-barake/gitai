@@ -1,9 +1,11 @@
+#!/usr/bin/env bun
 import { Command as CliCommand, Options, Prompt } from "@effect/cli";
 import { BunContext, BunRuntime } from "@effect/platform-bun";
-import { Effect, Logger, Option } from "effect";
+import { Effect, Logger, Option, String } from "effect";
 import type { PrDetails, PrReviewDetails } from "./AiGenerator.js";
 import { AiGenerator } from "./AiGenerator.js";
 import { cliLogger } from "./CliLogger.js";
+import { GitClient } from "./GitClient.js";
 import { GitHubClient } from "./GitHubClient.js";
 
 const repoOption = Options.text("repo").pipe(
@@ -37,15 +39,10 @@ const formatReviewAsMarkdown = (review: PrReviewDetails) => {
     )
     .join("\n\n");
 
-  return `<!-- pr-github-bot-review -->
-<details>
-<summary>Review</summary>
-
-${reviewItems}
-</details>`;
+  return `<!-- pr-github-bot-review -->\n<details>\n<summary>Review</summary>\n\n${reviewItems}\n</details>`;
 };
 
-const main = CliCommand.make("pr-gen", { repoOption }, ({ repoOption }) =>
+const prCommand = CliCommand.make("gh", { repoOption }, ({ repoOption }) =>
   Effect.gen(function* () {
     const ai = yield* AiGenerator;
     const github = yield* GitHubClient;
@@ -62,7 +59,7 @@ const main = CliCommand.make("pr-gen", { repoOption }, ({ repoOption }) =>
     });
 
     const diff = yield* github.getPrDiff(prNumber, nameWithOwner);
-    if (diff.trim() === "") {
+    if (String.isEmpty(diff)) {
       yield* Effect.log("PR diff is empty. Nothing to generate.");
       return;
     }
@@ -126,9 +123,37 @@ const main = CliCommand.make("pr-gen", { repoOption }, ({ repoOption }) =>
   }),
 );
 
+const commitCommand = CliCommand.make("commit", {}, () =>
+  Effect.gen(function* () {
+    const ai = yield* AiGenerator;
+    const git = yield* GitClient;
+
+    const diff = yield* git.getStagedDiff;
+    if (String.isEmpty(diff)) {
+      yield* Effect.log("No staged changes found. Nothing to commit.");
+      return;
+    }
+
+    const message = yield* ai.generateCommitMessage(diff);
+    yield* Effect.log(`\nGenerated commit message:\n\n${message}\n`);
+
+    const confirm = yield* Prompt.confirm({
+      message: "Would you like to commit with this message?",
+    });
+
+    if (confirm) {
+      yield* git.commit(message);
+    }
+  }),
+);
+
+const main = CliCommand.make("git-gen").pipe(
+  CliCommand.withSubcommands([prCommand, commitCommand]),
+);
+
 const cli = CliCommand.run(main, {
-  name: "AI PR Generator",
-  version: "1.0.0",
+  name: "AI Git Assistant",
+  version: "2.0.0",
 });
 
 const loggerLayer = Logger.replace(Logger.defaultLogger, cliLogger);
@@ -136,6 +161,7 @@ const loggerLayer = Logger.replace(Logger.defaultLogger, cliLogger);
 cli(process.argv).pipe(
   Effect.provide(AiGenerator.Default),
   Effect.provide(GitHubClient.Default),
+  Effect.provide(GitClient.Default),
   Effect.provide(BunContext.layer),
   Effect.provide(loggerLayer),
   BunRuntime.runMain({

@@ -41,7 +41,7 @@ export class GitHubClient extends Effect.Service<GitHubClient>()("GitHubClient",
               () => "Failed to fetch PR diff. Is `gh` installed and are you logged in?",
             ),
           );
-        return diff;
+        return diff.trim();
       }).pipe(Effect.withSpan("GitHubClient.getPrDiff"));
 
     const updatePr = (args: {

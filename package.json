@@ -1,12 +1,12 @@
 {
-  "name": "pr-gen",
+  "name": "git-gen",
   "version": "0.0.0",
   "type": "module",
   "packageManager": "pnpm@9.10.0",
   "license": "MIT",
-  "description": "AI-powered PR title and description generator",
+  "description": "AI-powered git assistant",
   "bin": {
-    "pr-gen": "src/Main.ts"
+    "git-gen": "src/Main.ts"
   },
   "repository": {
     "type": "git",

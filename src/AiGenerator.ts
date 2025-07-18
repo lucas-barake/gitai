@@ -44,6 +44,14 @@ export class PrDetails extends Schema.Class<PrDetails>("PrDetails")(
   }),
 ) {}
 
+export class CommitMessage extends Schema.Class<CommitMessage>("CommitMessage")(
+  Schema.Struct({
+    message: Schema.String.annotations({
+      description: "The commit message",
+    }),
+  }),
+) {}
+
 export class PrReviewDetails extends Schema.Class<PrReviewDetails>("PrReviewDetails")(
   Schema.Struct({
     review: Schema.Array(
@@ -91,6 +99,17 @@ const prDetailsResponseSchema = {
   required: ["title", "description", "fileSummaries"],
 };
 
+const commitMessageResponseSchema = {
+  type: "object",
+  properties: {
+    message: {
+      type: "string",
+      description: "The commit message",
+    },
+  },
+  required: ["message"],
+};
+
 const prReviewResponseSchema = {
   type: "object",
   properties: {
@@ -123,7 +142,8 @@ const TITLE_PROMPT_SECTION = `### Title (Subject Line)
   - **\`type\`**: Must be one of \`feat\`, \`fix\`, \`refactor\`, \`docs\`, \`style\`, \`test\`, or \`chore\`.
     - **Prioritize \`feat\`**: If the changes introduce a new user-facing capability, even if it's part of a refactor, use \`feat\`. A \`refactor\` should only be used when the primary purpose is improving internal code structure without changing observable behavior.
   - **\`scope\` (optional)**: Be specific. Derive the scope from the primary feature or area affected. Look at the file paths in the diff (e.g., \`packages/server/src/public/experiments/...\`) to determine the most relevant scope (e.g., \`experiments\`, \`auth\`, \`billing\`). Avoid generic scopes like \`server\` or \`client\` if a more specific one is available.
-  - **\`subject\`**: A short, imperative-mood summary of the *most impactful change*. For a \`feat\`, describe the new capability. For a \`fix\`, describe what was fixed. Avoid generic verbs like "update" or "improve" if possible. Focus on what the change *does* for the user or the system.`;
+  - **\`subject\`**: A short, imperative-mood summary of the *most impactful change*. For a \`feat\`, describe the new capability. For a \`fix\`, describe what was fixed. Avoid generic verbs like "update" or "improve" if possible. Focus on what the change *does* for the user or the system.
+`;
 
 const prTitleResponseSchema = {
   type: "object",
@@ -222,6 +242,57 @@ Analyze the following git diff and generate the PR title, description, and file 
 
         return response.candidates[0].content.parts[0].parsed;
       }).pipe(Effect.withSpan("AiGenerator.generatePrDetailsFromDiff"));
+
+    const generateCommitMessage = (diff: string) =>
+      Effect.gen(function* () {
+        const prompt = `You are an expert software engineer writing a commit message. Your task is to analyze the provided git diff and generate a concise, professional commit message following the Conventional Commits specification.
+
+Your response should be succinct but thorough—include all important information, but avoid unnecessary verbosity.
+
+## Format Requirements
+
+${TITLE_PROMPT_SECTION}
+
+### Body (optional)
+- **Separation**: MUST be separated from the subject line by a blank line.
+- **Content**: Explain the "why" of the change: What problem was solved? What was the motivation? What is the impact?
+- **Bulleted List**: For more complex changes, you MAY use a bulleted list to detail what was changed. Explain *what* was done at a high level, not just a summary of file changes.
+- **BREAKING CHANGE**: If the commit introduces breaking changes, the body MUST start a new paragraph with \`BREAKING CHANGE: \` followed by a description of the change.
+
+## Constraints
+- The tone must be professional and direct.
+- Do **not** use emojis.
+- The entire commit message (subject + body) will be provided in the "message" field.
+
+## Output Structure (JSON)
+- **message**: A string for the full commit message (subject and body).
+
+---
+
+## [Begin Task]
+Analyze the following git diff and generate the commit message in the specified JSON format:\n${diff}`;
+
+        const response = yield* httpClient
+          .post(
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent",
+            {
+              body: HttpBody.unsafeJson({
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: {
+                  response_mime_type: "application/json",
+                  response_schema: commitMessageResponseSchema,
+                },
+              }),
+            },
+          )
+          .pipe(
+            Effect.flatMap(
+              HttpClientResponse.schemaBodyJson(makeSchemaFromResponse(CommitMessage)),
+            ),
+          );
+
+        return response.candidates[0].content.parts[0].parsed.message;
+      }).pipe(Effect.withSpan("AiGenerator.generateCommitMessageFromDiff"));
 
     const generateTitle = (diff: string) =>
       Effect.gen(function* () {
@@ -322,6 +393,11 @@ Analyze the following git diff and generate the review in the specified JSON for
         filterDiff(diff).pipe(
           Effect.andThen(generatePrDetails),
           Effect.orDieWith((error) => `Failed to generate PR details: ${error.message}`),
+        ),
+      generateCommitMessage: (diff: string) =>
+        filterDiff(diff).pipe(
+          Effect.andThen(generateCommitMessage),
+          Effect.orDieWith((error) => `Failed to generate commit message: ${error.message}`),
         ),
       generateTitle: (diff: string) =>
         filterDiff(diff).pipe(

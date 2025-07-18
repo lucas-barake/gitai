@@ -1,8 +1,8 @@
 import { Command as CliCommand, Options, Prompt } from "@effect/cli";
-import { Command as PlatformCommand, CommandExecutor } from "@effect/platform";
 import { BunContext, BunRuntime } from "@effect/platform-bun";
-import { Effect, Option, Schema } from "effect";
+import { Effect, Option } from "effect";
 import { AiGenerator, PrDetails, PrReviewDetails } from "./AiGenerator.js";
+import { GitHubClient } from "./GitHubClient.js";
 
 const repoOption = Options.text("repo").pipe(
   Options.optional,
@@ -10,26 +10,6 @@ const repoOption = Options.text("repo").pipe(
     "Specify a custom repository (e.g., 'owner/repo'). Defaults to local detection.",
   ),
 );
-
-const getLocalRepo = Effect.gen(function* () {
-  yield* Effect.logInfo("Detecting current repository...");
-
-  const executor = yield* CommandExecutor.CommandExecutor;
-  const getRepoCommand = PlatformCommand.make("gh", "repo", "view", "--json", "nameWithOwner");
-  return yield* executor.string(getRepoCommand).pipe(
-    Effect.filterOrFail(
-      (s) => s.trim() !== "",
-      () => new Error(),
-    ),
-    Effect.flatMap(
-      Schema.decode(Schema.parseJson(Schema.Struct({ nameWithOwner: Schema.String }))),
-    ),
-    Effect.orDieWith(
-      () => "Failed to detect repository. Are you inside a Git repository directory?",
-    ),
-    Effect.map(({ nameWithOwner }) => nameWithOwner),
-  );
-});
 
 const formatPrDescription = (details: PrDetails) => {
   const fileSummaries = details.fileSummaries
@@ -63,18 +43,13 @@ ${reviewItems}
 </details>`;
 };
 
-const PrComment = Schema.Struct({
-  id: Schema.String,
-  body: Schema.String,
-});
-
 const main = CliCommand.make("pr-gen", { repoOption }, ({ repoOption }) =>
   Effect.gen(function* () {
     const ai = yield* AiGenerator;
-    const executor = yield* CommandExecutor.CommandExecutor;
+    const github = yield* GitHubClient;
 
     const nameWithOwner = yield* Option.match(repoOption, {
-      onNone: () => getLocalRepo,
+      onNone: () => github.getLocalRepo,
       onSome: (repo) => Effect.succeed(repo),
     });
 
@@ -84,13 +59,7 @@ const main = CliCommand.make("pr-gen", { repoOption }, ({ repoOption }) =>
       message: "Please enter the PR number:",
     });
 
-    yield* Effect.logInfo(`Fetching diff for PR #${prNumber}...`);
-    const getDiffCommand = PlatformCommand.make("gh", "pr", "diff", prNumber, "-R", nameWithOwner);
-    const diff = yield* executor
-      .string(getDiffCommand)
-      .pipe(
-        Effect.orDieWith(() => "Failed to fetch PR diff. Is `gh` installed and are you logged in?"),
-      );
+    const diff = yield* github.getPrDiff(prNumber, nameWithOwner);
 
     if (diff.trim() === "") {
       yield* Effect.logInfo("PR diff is empty. Nothing to generate.");
@@ -100,108 +69,55 @@ const main = CliCommand.make("pr-gen", { repoOption }, ({ repoOption }) =>
     const action = yield* Prompt.select({
       message: "What would you like to do?",
       choices: [
-        { title: "Generate PR details (title and description)", value: "details" as const },
+        { title: "Generate title and description", value: "details" as const },
+        { title: "Generate title only", value: "title" as const },
         { title: "Generate a review and post as a comment", value: "review" as const },
       ],
     });
 
-    if (action === "details") {
-      yield* Effect.logInfo("Generating PR title and description...");
-      const details = yield* ai
-        .generatePrDetails(diff)
-        .pipe(
-          Effect.orDieWith(() => "Failed to generate PR details. Check logs for more details."),
-        );
+    switch (action) {
+      case "details": {
+        yield* Effect.logInfo("Generating PR title and description...");
+        const details = yield* ai.generatePrDetails(diff);
 
-      yield* Effect.logInfo(`\nGenerated PR details:\n${JSON.stringify(details, null, 2)}`);
+        yield* Effect.logInfo(`\nGenerated PR details:\n${JSON.stringify(details, null, 2)}`);
 
-      yield* Effect.logInfo(`Updating PR #${prNumber} on GitHub...`);
-      const updatePrCommand = PlatformCommand.make(
-        "gh",
-        "pr",
-        "edit",
-        String(prNumber),
-        "-R",
-        nameWithOwner,
-        "--title",
-        details.title,
-        "--body",
-        formatPrDescription(details),
-      );
-      const exitCode = yield* executor.exitCode(updatePrCommand);
-
-      if (exitCode === 0) {
-        yield* Effect.logInfo(`✅ Successfully updated PR #${prNumber} on ${nameWithOwner}!`);
-      } else {
-        return yield* Effect.dieMessage(
-          `Failed to update PR. 'gh' command exited with code: ${exitCode}`,
-        );
+        yield* github.updatePr({
+          prNumber,
+          repo: nameWithOwner,
+          title: details.title,
+          body: formatPrDescription(details),
+        });
+        break;
       }
-    } else {
-      yield* Effect.logInfo("Generating review...");
+      case "review": {
+        yield* Effect.logInfo("Generating review...");
 
-      const listCommentsCommand = PlatformCommand.make(
-        "gh",
-        "pr",
-        "comment",
-        prNumber,
-        "-R",
-        nameWithOwner,
-        "--json",
-        "id,body",
-      );
+        const comments = yield* github.listPrComments(prNumber, nameWithOwner);
 
-      const comments = yield* executor.string(listCommentsCommand).pipe(
-        Effect.flatMap(Schema.decode(Schema.parseJson(Schema.Array(PrComment)))),
-        Effect.catchAll(() => Effect.succeed([])),
-      );
-
-      const previousComment = comments.find((comment) =>
-        comment.body.includes("<!-- pr-github-bot-review -->"),
-      );
-
-      if (previousComment) {
-        yield* Effect.logInfo(`Deleting previous review comment...`);
-        const deleteCommentCommand = PlatformCommand.make(
-          "gh",
-          "pr",
-          "comment",
-          "--delete",
-          previousComment.id,
-          "-R",
-          nameWithOwner,
+        const previousComment = comments.find((comment) =>
+          comment.body.includes("<!-- pr-github-bot-review -->"),
         );
-        yield* executor.exitCode(deleteCommentCommand);
+
+        if (previousComment) {
+          yield* github.deletePrComment(previousComment.id, nameWithOwner);
+        }
+
+        const review = yield* ai.generateReview(diff);
+
+        const markdown = formatReviewAsMarkdown(review);
+        yield* Effect.logInfo(`\nGenerated Review:\n${markdown}`);
+
+        yield* github.addPrComment({ prNumber, repo: nameWithOwner, body: markdown });
+        break;
       }
+      case "title": {
+        yield* Effect.logInfo("Generating PR title...");
+        const title = yield* ai.generateTitle(diff);
 
-      const review = yield* ai
-        .generateReview(diff)
-        .pipe(Effect.orDieWith(() => "Failed to generate review. Check logs for more details."));
-
-      const markdown = formatReviewAsMarkdown(review);
-      yield* Effect.logInfo(`\nGenerated Review:\n${markdown}`);
-
-      yield* Effect.logInfo(`Adding review comment to PR #${prNumber} on GitHub...`);
-      const addCommentCommand = PlatformCommand.make(
-        "gh",
-        "pr",
-        "comment",
-        prNumber,
-        "-R",
-        nameWithOwner,
-        "--body",
-        markdown,
-      );
-
-      const exitCode = yield* executor.exitCode(addCommentCommand);
-      if (exitCode === 0) {
-        yield* Effect.logInfo(
-          `✅ Successfully added review comment to PR #${prNumber} on ${nameWithOwner}!`,
-        );
-      } else {
-        return yield* Effect.dieMessage(
-          `Failed to add comment. 'gh' command exited with code: ${exitCode}`,
-        );
+        yield* Effect.logInfo(`\nGenerated PR Title:\n\n${title}\n`);
+        yield* Effect.logInfo("You can now copy this title and use it for your PR.");
+        break;
       }
     }
   }),
@@ -214,6 +130,7 @@ const cli = CliCommand.run(main, {
 
 cli(process.argv).pipe(
   Effect.provide(AiGenerator.Default),
+  Effect.provide(GitHubClient.Default),
   Effect.provide(BunContext.layer),
   BunRuntime.runMain,
 );

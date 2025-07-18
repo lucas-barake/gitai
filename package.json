@@ -1,0 +1,82 @@
+{
+  "name": "pr-gen",
+  "version": "0.0.0",
+  "type": "module",
+  "packageManager": "pnpm@9.10.0",
+  "license": "MIT",
+  "description": "AI-powered PR title and description generator",
+  "bin": {
+    "pr-gen": "src/Main.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "<PLACEHOLDER>"
+  },
+  "publishConfig": {
+    "access": "public",
+    "directory": "dist"
+  },
+  "scripts": {
+    "check": "tsc -b tsconfig.json",
+    "lint": "eslint \"**/{src,test,examples,scripts,dtslint}/**/*.{ts,mjs}\"",
+    "lint-fix": "pnpm lint --fix",
+    "test": "vitest",
+    "coverage": "vitest --coverage",
+    "pr-gen": "bun run src/Main.ts",
+    "format": "prettier --write \"**/*.{ts,mjs,json,md}\"",
+    "build": "bun build src/Main.ts --compile --outfile pr-gen"
+  },
+  "dependencies": {
+    "@effect/ai": "latest",
+    "@effect/ai-google": "latest",
+    "@effect/cli": "latest",
+    "@effect/platform": "latest",
+    "@effect/platform-bun": "latest",
+    "effect": "latest"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.24.8",
+    "@babel/core": "^7.25.2",
+    "@babel/plugin-transform-export-namespace-from": "^7.24.7",
+    "@babel/plugin-transform-modules-commonjs": "^7.24.8",
+    "@effect/build-utils": "0.8.9",
+    "@effect/eslint-plugin": "0.3.2",
+    "@effect/language-service": "0.27.2",
+    "@effect/vitest": "latest",
+    "@eslint/compat": "1.1.1",
+    "@eslint/eslintrc": "3.1.0",
+    "@eslint/js": "9.10.0",
+    "@types/node": "^22.5.2",
+    "@typescript-eslint/eslint-plugin": "^8.4.0",
+    "@typescript-eslint/parser": "^8.4.0",
+    "babel-plugin-annotate-pure-calls": "^0.4.0",
+    "dotenv-cli": "8.0.0",
+    "eslint": "^9.10.0",
+    "eslint-import-resolver-typescript": "^3.6.3",
+    "eslint-plugin-codegen": "^0.28.0",
+    "eslint-plugin-import": "^2.30.0",
+    "eslint-plugin-simple-import-sort": "^12.1.1",
+    "eslint-plugin-sort-destructure-keys": "^2.0.0",
+    "prettier": "^3.6.2",
+    "tsx": "^4.17.0",
+    "typescript": "^5.6.2",
+    "vitest": "^2.0.5"
+  },
+  "effect": {
+    "generateExports": {
+      "include": [
+        "**/*.ts"
+      ]
+    },
+    "generateIndex": {
+      "include": [
+        "**/*.ts"
+      ]
+    }
+  },
+  "pnpm": {
+    "patchedDependencies": {
+      "babel-plugin-annotate-pure-calls@0.4.0": "patches/babel-plugin-annotate-pure-calls@0.4.0.patch"
+    }
+  }
+}

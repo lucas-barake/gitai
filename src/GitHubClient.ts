@@ -13,8 +13,7 @@ export class GitHubClient extends Effect.Service<GitHubClient>()("GitHubClient",
     const executor = yield* CommandExecutor.CommandExecutor;
 
     const getLocalRepo = Effect.gen(function* () {
-      yield* Effect.logInfo("Detecting current repository...");
-
+      yield* Effect.log("Detecting current repository...");
       const getRepoCommand = Command.make("gh", "repo", "view", "--json", "nameWithOwner");
       return yield* executor.string(getRepoCommand).pipe(
         Effect.filterOrFail(
@@ -33,7 +32,7 @@ export class GitHubClient extends Effect.Service<GitHubClient>()("GitHubClient",
 
     const getPrDiff = (prNumber: string, repo: string) =>
       Effect.gen(function* () {
-        yield* Effect.logInfo(`Fetching diff for PR #${prNumber}...`);
+        yield* Effect.log(`Fetching diff for PR #${prNumber}...`);
         const getDiffCommand = Command.make("gh", "pr", "diff", prNumber, "-R", repo);
         const diff = yield* executor
           .string(getDiffCommand)
@@ -52,7 +51,7 @@ export class GitHubClient extends Effect.Service<GitHubClient>()("GitHubClient",
       readonly body?: string;
     }) =>
       Effect.gen(function* () {
-        yield* Effect.logInfo(`Updating PR #${args.prNumber} on GitHub...`);
+        yield* Effect.log(`Updating PR #${args.prNumber} on GitHub...`);
         const commandArgs = ["pr", "edit", args.prNumber, "-R", args.repo];
         if (args.title) {
           commandArgs.push("--title", args.title);
@@ -65,7 +64,7 @@ export class GitHubClient extends Effect.Service<GitHubClient>()("GitHubClient",
         const exitCode = yield* executor.exitCode(updatePrCommand);
 
         if (exitCode === 0) {
-          yield* Effect.logInfo(`✅ Successfully updated PR #${args.prNumber} on ${args.repo}!`);
+          yield* Effect.log(`✅ Successfully updated PR #${args.prNumber} on ${args.repo}!`);
         } else {
           return yield* Effect.dieMessage(
             `Failed to update PR. 'gh' command exited with code: ${exitCode}`,
@@ -98,7 +97,7 @@ export class GitHubClient extends Effect.Service<GitHubClient>()("GitHubClient",
       readonly body: string;
     }) =>
       Effect.gen(function* () {
-        yield* Effect.logInfo(`Adding review comment to PR #${args.prNumber} on GitHub...`);
+        yield* Effect.log(`Adding review comment to PR #${args.prNumber} on GitHub...`);
         const addCommentCommand = Command.make(
           "gh",
           "pr",
@@ -112,7 +111,7 @@ export class GitHubClient extends Effect.Service<GitHubClient>()("GitHubClient",
 
         const exitCode = yield* executor.exitCode(addCommentCommand);
         if (exitCode === 0) {
-          yield* Effect.logInfo(
+          yield* Effect.log(
             `✅ Successfully added review comment to PR #${args.prNumber} on ${args.repo}!`,
           );
         } else {
@@ -124,7 +123,7 @@ export class GitHubClient extends Effect.Service<GitHubClient>()("GitHubClient",
 
     const deletePrComment = (commentId: string, repo: string) =>
       Effect.gen(function* () {
-        yield* Effect.logInfo(`Deleting previous review comment...`);
+        yield* Effect.log(`Deleting previous review comment...`);
         const deleteCommentCommand = Command.make(
           "gh",
           "pr",
@@ -137,7 +136,7 @@ export class GitHubClient extends Effect.Service<GitHubClient>()("GitHubClient",
         const exitCode = yield* executor.exitCode(deleteCommentCommand);
 
         if (exitCode !== 0) {
-          yield* Effect.logWarning(
+          yield* Effect.log(
             `Could not delete comment ${commentId}. It might have been already deleted.`,
           );
         }

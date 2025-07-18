@@ -1,7 +1,8 @@
 import { Command as CliCommand, Options, Prompt } from "@effect/cli";
 import { BunContext, BunRuntime } from "@effect/platform-bun";
-import { Effect, Option } from "effect";
+import { Effect, Logger, Option } from "effect";
 import { AiGenerator, PrDetails, PrReviewDetails } from "./AiGenerator.js";
+import { cliLogger } from "./CliLogger.js";
 import { GitHubClient } from "./GitHubClient.js";
 
 const repoOption = Options.text("repo").pipe(
@@ -53,16 +54,15 @@ const main = CliCommand.make("pr-gen", { repoOption }, ({ repoOption }) =>
       onSome: (repo) => Effect.succeed(repo),
     });
 
-    yield* Effect.logInfo(`Using repository: ${nameWithOwner}`);
+    yield* Effect.log(`Using repository: ${nameWithOwner}`);
 
     const prNumber = yield* Prompt.text({
       message: "Please enter the PR number:",
     });
 
     const diff = yield* github.getPrDiff(prNumber, nameWithOwner);
-
     if (diff.trim() === "") {
-      yield* Effect.logInfo("PR diff is empty. Nothing to generate.");
+      yield* Effect.log("PR diff is empty. Nothing to generate.");
       return;
     }
 
@@ -77,10 +77,11 @@ const main = CliCommand.make("pr-gen", { repoOption }, ({ repoOption }) =>
 
     switch (action) {
       case "details": {
-        yield* Effect.logInfo("Generating PR title and description...");
+        yield* Effect.log("Generating PR title and description...");
+
         const details = yield* ai.generatePrDetails(diff);
 
-        yield* Effect.logInfo(`\nGenerated PR details:\n${JSON.stringify(details, null, 2)}`);
+        yield* Effect.log(`\nGenerated PR details:\n${JSON.stringify(details, null, 2)}`);
 
         yield* github.updatePr({
           prNumber,
@@ -91,7 +92,7 @@ const main = CliCommand.make("pr-gen", { repoOption }, ({ repoOption }) =>
         break;
       }
       case "review": {
-        yield* Effect.logInfo("Generating review...");
+        yield* Effect.log("Generating review...");
 
         const comments = yield* github.listPrComments(prNumber, nameWithOwner);
 
@@ -106,16 +107,17 @@ const main = CliCommand.make("pr-gen", { repoOption }, ({ repoOption }) =>
         const review = yield* ai.generateReview(diff);
 
         const markdown = formatReviewAsMarkdown(review);
-        yield* Effect.logInfo(`\nGenerated Review:\n${markdown}`);
+        yield* Effect.log(`\nGenerated Review:\n${markdown}`);
 
         yield* github.addPrComment({ prNumber, repo: nameWithOwner, body: markdown });
         break;
       }
       case "title": {
-        yield* Effect.logInfo("Generating PR title...");
-        const title = yield* ai.generateTitle(diff);
+        yield* Effect.log("Generating PR title...");
 
-        yield* Effect.logInfo(`\nGenerated PR Title:\n\n${title}\n`);
+        const title = yield* ai.generateTitle(diff);
+        yield* Effect.log(`\nGenerated PR Title:\n\n${title}\n`);
+
         yield* github.updatePr({ prNumber, repo: nameWithOwner, title });
         break;
       }
@@ -128,9 +130,14 @@ const cli = CliCommand.run(main, {
   version: "1.0.0",
 });
 
+const loggerLayer = Logger.replace(Logger.defaultLogger, cliLogger);
+
 cli(process.argv).pipe(
   Effect.provide(AiGenerator.Default),
   Effect.provide(GitHubClient.Default),
   Effect.provide(BunContext.layer),
-  BunRuntime.runMain,
+  Effect.provide(loggerLayer),
+  BunRuntime.runMain({
+    disablePrettyLogger: true,
+  }),
 );

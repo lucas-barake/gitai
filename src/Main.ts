@@ -1,8 +1,9 @@
 #!/usr/bin/env bun
 import { Command as CliCommand, Options, Prompt } from "@effect/cli";
 import { BunContext, BunRuntime } from "@effect/platform-bun";
-import { Effect, Logger, Option, String } from "effect";
+import { Cause, Effect, Logger, Option, String } from "effect";
 import { AiGenerator, REVIEW_COMMENT_TAG } from "./AiGenerator.js";
+import { AiLanguageModel } from "./AiLanguageModel.js";
 import { cliLogger } from "./CliLogger.js";
 import { GitClient } from "./GitClient.js";
 import { GitHubClient } from "./GitHubClient.js";
@@ -130,11 +131,19 @@ const loggerLayer = Logger.replace(Logger.defaultLogger, cliLogger);
 
 cli(process.argv).pipe(
   Effect.provide(AiGenerator.Default),
+  Effect.provide(AiLanguageModel.Default),
   Effect.provide(GitHubClient.Default),
   Effect.provide(GitClient.Default),
   Effect.provide(BunContext.layer),
+  Effect.tapErrorCause((cause) => {
+    if (Cause.isInterruptedOnly(cause)) {
+      return Effect.void;
+    }
+    return Effect.logError(cause);
+  }),
   Effect.provide(loggerLayer),
   BunRuntime.runMain({
     disablePrettyLogger: true,
+    disableErrorReporting: true,
   }),
 );

@@ -1,4 +1,4 @@
-import { Array, Cause, HashMap, Inspectable, Logger, LogLevel } from "effect";
+import { Array, Cause, HashMap, Inspectable, Logger, type LogLevel } from "effect";
 
 const withColor = (text: string, ...colors: ReadonlyArray<string>) => {
   let out = "";

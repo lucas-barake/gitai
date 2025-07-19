@@ -115,31 +115,33 @@ ${fileSummaries}
         return result;
       }).pipe(Effect.withSpan("AiGenerator.generateReviewFromDiff"));
 
+    const orDie =
+      (message: string) =>
+      <A, E extends { message: string }, R>(self: Effect.Effect<A, E, R>) =>
+        self.pipe(Effect.orDieWith((error) => `${message}: ${error.message}`));
+
     return {
       generatePrDetails: (diff: string) =>
         filterDiff(diff).pipe(
           Effect.andThen(generatePrDetails),
-          Effect.orDieWith((error) => `Failed to generate PR details: ${error.message}`),
           Effect.map((details) => ({
             title: details.title,
             body: formatPrDescription(details),
           })),
+          orDie("Failed to generate PR details"),
         ),
       generateCommitMessage: (diff: string) =>
         filterDiff(diff).pipe(
           Effect.andThen(generateCommitMessage),
-          Effect.orDieWith((error) => `Failed to generate commit message: ${error.message}`),
+          orDie("Failed to generate commit message"),
         ),
       generateTitle: (diff: string) =>
-        filterDiff(diff).pipe(
-          Effect.andThen(generateTitle),
-          Effect.orDieWith((error) => `Failed to generate PR title: ${error.message}`),
-        ),
+        filterDiff(diff).pipe(Effect.andThen(generateTitle), orDie("Failed to generate PR title")),
       generateReview: (diff: string) =>
         filterDiff(diff).pipe(
           Effect.andThen(generateReview),
-          Effect.orDieWith((error) => `Failed to generate review: ${error.message}`),
           Effect.map(formatReviewAsMarkdown),
+          orDie("Failed to generate review"),
         ),
     } as const;
   }),

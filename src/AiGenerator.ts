@@ -7,7 +7,6 @@ import {
   makeReviewPrompt,
   makeTitlePrompt,
 } from "./internal/prompts.js";
-import { makeOpenApiSchema } from "./internal/make-open-api-schema.js";
 
 export const REVIEW_COMMENT_TAG = "<!-- [gitai-review](https://github.com/lucas-barake/gitai) -->";
 
@@ -71,7 +70,6 @@ ${fileSummaries}
         return yield* ai.generateObject({
           prompt,
           schema: PrDetails,
-          responseSchema: makeOpenApiSchema(PrDetails),
         });
       }).pipe(Effect.withSpan("AiGenerator.generatePrDetailsFromDiff"));
 
@@ -82,7 +80,6 @@ ${fileSummaries}
         const result = yield* ai.generateObject({
           prompt,
           schema: CommitMessage,
-          responseSchema: makeOpenApiSchema(CommitMessage),
         });
 
         return result.message;
@@ -95,7 +92,6 @@ ${fileSummaries}
         const result = yield* ai.generateObject({
           prompt,
           schema: PrTitle,
-          responseSchema: makeOpenApiSchema(PrTitle),
         });
 
         return result.title;
@@ -109,7 +105,6 @@ ${fileSummaries}
         const result = yield* ai.generateObject({
           prompt,
           schema: PrReviewDetails,
-          responseSchema: makeOpenApiSchema(PrReviewDetails),
         });
 
         return result;

@@ -6,7 +6,7 @@ import {
   HttpClientResponse,
 } from "@effect/platform";
 import { Config, Effect, Redacted, Schedule, Schema } from "effect";
-import type { JsonSchema7Root } from "effect/JSONSchema";
+import { makeOpenApiSchema } from "./internal/make-open-api-schema.js";
 
 const makeSchemaFromResponse = <A, I>(schema: Schema.Schema<A, I>) =>
   Schema.Struct({
@@ -29,7 +29,6 @@ const makeSchemaFromResponse = <A, I>(schema: Schema.Schema<A, I>) =>
 export interface GenerateObjectOptions<A, I extends Record<string, unknown>> {
   readonly prompt: string;
   readonly schema: Schema.Schema<A, I>;
-  readonly responseSchema: JsonSchema7Root;
 }
 
 export class AiLanguageModel extends Effect.Service<AiLanguageModel>()("AiLanguageModel", {
@@ -51,8 +50,6 @@ export class AiLanguageModel extends Effect.Service<AiLanguageModel>()("AiLangua
       options: GenerateObjectOptions<A, I>,
     ) =>
       Effect.gen(function* () {
-        const { prompt, responseSchema, schema } = options;
-
         const response = yield* httpClient
           .post(
             "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent",
@@ -61,12 +58,16 @@ export class AiLanguageModel extends Effect.Service<AiLanguageModel>()("AiLangua
                 contents: [{ parts: [{ text: prompt }] }],
                 generationConfig: {
                   response_mime_type: "application/json",
-                  response_schema: responseSchema,
+                  response_schema: makeOpenApiSchema(options.schema),
                 },
               }),
             },
           )
-          .pipe(Effect.flatMap(HttpClientResponse.schemaBodyJson(makeSchemaFromResponse(schema))));
+          .pipe(
+            Effect.flatMap(
+              HttpClientResponse.schemaBodyJson(makeSchemaFromResponse(options.schema)),
+            ),
+          );
 
         return response.candidates[0].content.parts[0].parsed;
       }).pipe(Effect.withSpan("AiLanguageModel.generateObject"));

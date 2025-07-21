@@ -23,9 +23,9 @@ This CLI tool connects to the GitHub (`gh`) CLI and a generative AI to perform t
 
 Before you begin, ensure you have the following installed and configured:
 
-1.  **[Bun](https://bun.sh/)**: The runtime used to execute the script.
-2.  **[GitHub CLI](https://cli.github.com/)**: The tool used to interact with GitHub.
+1.  **[GitHub CLI](https://cli.github.com/)**: The tool used to interact with GitHub.
     - Make sure you are authenticated by running `gh auth login`.
+2.  **[Google AI API](https://ai.google.dev/gemini-api/docs/api-key)**: The API key used to interact with the AI.
 
 ## Configuration
 

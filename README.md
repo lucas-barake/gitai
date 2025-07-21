@@ -65,21 +65,32 @@ Using this wrapper pattern is the most secure way to provide credentials to the 
 
 ## Installation
 
-Follow these steps to set up the `gitai` command on your local machine.
+We recommend using [Nix](https://nixos.org/) and [direnv](https://direnv.net/) for an easy and reproducible setup. This project provides a `flake.nix` and `.envrc` for seamless development environment configuration.
 
-### 1. Clone the Repository
+### 1. Install Nix and direnv
 
-First, clone this project to your local machine.
+- [Install Nix](https://nixos.org/download.html) if you haven't already.
+- [Install direnv](https://direnv.net/docs/installation.html) and hook it into your shell (see direnv docs for your shell).
 
-### 2. Install Dependencies
+### 2. Allow direnv in the Project Directory
 
-Install the necessary packages using Bun:
+After cloning the repository, run:
+
+```bash
+direnv allow
+```
+
+This will automatically set up the development environment using Nix, as defined in `flake.nix` and `.envrc`.
+
+### 3. Install Dependencies
+
+With the environment active, install the necessary packages using Bun:
 
 ```bash
 bun install
 ```
 
-### 3. Build the Binary
+### 4. Build the Binary
 
 Run the build script to compile the application into a single executable file:
 
@@ -89,9 +100,9 @@ bun run build
 
 This will create a `gitai` executable in the project root.
 
-### 4. Link the Binary for Global Access
+### 5. Link the Binary for Global Access
 
-To use the `gitai` command from anywhere, create a symbolic link from the compiled binary to a directory in your system's `PATH`. This ensures that whenever you rebuild the binary, the global command is automatically updated. A common location is `/usr/local/bin`.
+To use the `gitai` command from anywhere, create a symbolic link from the compiled binary to a directory in your system's `PATH`. For example:
 
 ```bash
 ln -s "$(pwd)/gitai" /usr/local/bin/gitai

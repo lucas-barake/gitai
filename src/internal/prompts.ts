@@ -1,10 +1,11 @@
-const TITLE_PROMPT_SECTION = `### Title (Subject Line)
-- **Follow the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification:** \`type(scope): subject\`.
-  - **\`type\`**: Must be one of \`feat\`, \`fix\`, \`refactor\`, \`docs\`, \`style\`, \`test\`, or \`chore\`.
-    - **Prioritize \`feat\`**: If the changes introduce a new user-facing capability, even if it's part of a refactor, use \`feat\`. A \`refactor\` should only be used when the primary purpose is improving internal code structure without changing observable behavior.
+const TITLE_PROMPT_SECTION = `- **Follow the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification:** \`type(scope): subject\`.
+  - **\`type\`**: Must be one of \`feat\`, \`fix\`, \`improvement\`, \`refactor\`, \`perf\`, \`docs\`, \`style\`, \`test\`, \`build\`, \`ci\`, \`ops\`, \`chore\`, \`revert\`, \`security\`, or \`deprecate\`.
   - **\`scope\` (optional)**: Be specific. Derive the scope from the primary feature or area affected. Look at the file paths in the diff (e.g., \`packages/server/src/public/experiments/...\`) to determine the most relevant scope (e.g., \`experiments\`, \`auth\`, \`billing\`). Avoid generic scopes like \`server\` or \`client\` if a more specific one is available.
-  - **\`subject\`**: A short, imperative-mood summary of the *most impactful change*. For a \`feat\`, describe the new capability. For a \`fix\`, describe what was fixed. Avoid generic verbs like "update" or "improve" if possible. Focus on what the change *does* for the user or the system.
-`;
+  - **\`subject\`**: A short, imperative-mood summary of the *most impactful change*. For a \`feat\`, describe the new capability. For a \`fix\`, describe what was fixed. Avoid generic verbs like "update" or "improve" if possible. Focus on what the change *does* for the user or the system.`;
+
+// ----------------------
+// PR Details
+// ----------------------
 
 export const makePrDetailsPrompt = (
   diff: string,
@@ -38,34 +39,94 @@ ${TITLE_PROMPT_SECTION}
 ## [Begin Task]
 Analyze the following git diff and generate the PR title, description, and file summaries in the specified JSON format:\n${diff}`;
 
+// ----------------------
+// Commit Message
+// ----------------------
+
 export const makeCommitMessagePrompt = (
   diff: string,
-) => `You are an expert software engineer writing a commit message. Your task is to analyze the provided git diff and generate a concise, professional commit message following the Conventional Commits specification.
+) => `You are an expert senior software engineer with years of experience writing exemplary Git commit messages for high-performing teams. Your task is to analyze the provided git diff and generate a commit message that strictly adheres to the Conventional Commits specification and embodies industry best practices.
 
-Your response should be succinct but thorough—include all important information, but avoid unnecessary verbosity.
+Your generated message must be clear, concise, and provide meaningful context for future developers, code reviewers, and automated tooling.
 
-## Format Requirements
+## Guiding Principles
 
-${TITLE_PROMPT_SECTION}
+1.  **Identify the Primary Intent:** A commit can have multiple facets (e.g., a new feature that also required some refactoring). Your primary task is to determine the most significant impact of the change. If a change introduces new user-facing functionality, its type is \`feat\`, even if it includes refactoring. The type should reflect the core purpose of the commit.
+2.  **Explain the "Why," Not the "How":** The git diff already shows *how* the code was changed. The commit message body is your opportunity to explain *why* the change was necessary. Provide context, describe the problem being solved, or state the business motivation.
+3.  **Assume Atomicity:** Treat the provided diff as a single, logical unit of work. The commit message should encapsulate this one change completely.
 
-### Body (optional)
-- **Separation**: MUST be separated from the subject line by a blank line.
-- **Content**: Explain the "why" of the change: What problem was solved? What was the motivation? What is the impact?
-- **Bulleted List**: For more complex changes, you MAY use a bulleted list to detail what was changed. Explain *what* was done at a high level, not just a summary of file changes.
-- **BREAKING CHANGE**: If the commit introduces breaking changes, the body MUST start a new paragraph with \`BREAKING CHANGE: \` followed by a description of the change.
+## Format Specification: Conventional Commits
+
+Your entire output MUST follow this structure precisely.
+
+\`\`\`
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+\`\`\`
+
+### 1. Header (Mandatory)
+
+The header is a single line: \`<type>[optional scope]: <description>\`
+
+*   **Type:** MUST be one of the following lowercase strings:
+    *   **feat**: A new feature for the user.
+    *   **fix**: A bug fix for the user.
+    *   **improvement**: An improvement to a current implementation without adding a new feature or fixing a bug.[6]
+    *   **docs**: Changes to documentation only.
+    *   **style**: Formatting, missing semicolons, etc.; no production code change.
+    *   **refactor**: A code change that neither fixes a bug nor adds a feature.
+    *   **perf**: A code change that improves performance.
+    *   **test**: Adding missing tests or correcting existing tests.
+    *   **build**: Changes that affect the build system or external dependencies.
+    *   **ci**: Changes to CI configuration files and scripts.
+    *   **ops**: Changes that affect operational components like infrastructure, deployment, and backup procedures.
+    *   **chore**: Other changes that don't modify \`src\` or \`test\` files.
+    *   **revert**: Reverts a previous commit.
+    *   **security**: A change that improves security or resolves a vulnerability.
+    *   **deprecate**: A change that deprecates existing functionality.
+
+*   **Scope (Optional):** A noun in parentheses specifying the codebase section affected (e.g., \`(api)\`, \`(ui)\`, \`(auth)\`).
+
+*   **Description:** A concise summary of the change.
+    *   MUST use the imperative, present tense (e.g., "add," "change," "fix," not "added," "changed," "fixed"). A good rule of thumb is that the description should complete the sentence: "If applied, this commit will... <description>".
+    *   MUST begin with a lowercase letter.
+    *   MUST NOT end with a period.
+
+### 2. Body (Optional)
+
+*   MUST be separated from the header by exactly one blank line.
+*   Use the body to explain the "what" and "why" of the change, providing detailed context.
+*   Wrap lines at 72 characters for readability.
+*   You MAY use bullet points (\`-\` or \`*\`) for lists.
+
+### 3. Footer (Optional)
+
+*   MUST be separated from the body by exactly one blank line.
+*   **Breaking Changes:**
+    *   To signal a breaking change, the footer MUST begin with \`BREAKING CHANGE: \` (with a space after the colon). Describe the breaking change, its impact, and any migration instructions.
+    *   Alternatively, or additionally, a \`!\` can be appended to the type/scope in the header (e.g., \`feat(api)!:\`) to draw attention to a breaking change.
+*   **Issue References:** Reference issues using keywords like \`Fixes: #123\` or \`Closes: JIRA-456\`.
 
 ## Constraints
 - The tone must be professional and direct.
 - Do **not** use emojis.
-- The entire commit message (subject + body) will be provided in the "message" field.
 
 ## Output Structure (JSON)
-- **message**: A string for the full commit message (subject and body).
+- Your entire response MUST be a single JSON object.
+- The JSON object must contain one key: \`"message"\`.
+- The value of \`"message"\` must be a single string containing the complete, formatted commit message (header, body, and footer as applicable).
 
 ---
 
-## [Begin Task]
+##
 Analyze the following git diff and generate the commit message in the specified JSON format:\n${diff}`;
+
+// ----------------------
+// PR Title
+// ----------------------
 
 export const makeTitlePrompt = (
   diff: string,
@@ -87,6 +148,10 @@ ${TITLE_PROMPT_SECTION}
 
 ## [Begin Task]
 Analyze the following git diff and generate the PR title in the specified JSON format:\n${diff}`;
+
+// ----------------------
+// PR Review
+// ----------------------
 
 export const makeReviewPrompt = (
   diff: string,

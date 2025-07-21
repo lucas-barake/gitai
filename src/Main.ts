@@ -105,6 +105,8 @@ const commitCommand = CliCommand.make("commit", {}, () =>
       return;
     }
 
+    yield* Effect.log("Generating commit message...");
+
     const message = yield* ai.generateCommitMessage(diff);
     yield* Effect.log(`\nGenerated commit message:\n\n${message}\n`);
 

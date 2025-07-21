@@ -1,16 +1,16 @@
 {
-  "name": "git-gen",
+  "name": "gitai",
   "version": "0.0.0",
   "type": "module",
   "packageManager": "pnpm@9.10.0",
   "license": "MIT",
   "description": "AI-powered git assistant",
   "bin": {
-    "git-gen": "src/Main.ts"
+    "gitai": "src/Main.ts"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/lucas-barake/git-gen"
+    "url": "https://github.com/lucas-barake/gitai"
   },
   "publishConfig": {
     "access": "public",
@@ -22,9 +22,9 @@
     "lint-fix": "pnpm lint --fix",
     "test": "vitest",
     "coverage": "vitest --coverage",
-    "pr-gen": "bun run src/Main.ts",
+    "gitai": "bun run src/Main.ts",
     "format": "prettier --write \"**/*.{ts,mjs,json,md}\"",
-    "build": "bun build src/Main.ts --compile --outfile git-gen"
+    "build": "bun build src/Main.ts --compile --outfile gitai"
   },
   "dependencies": {
     "@effect/ai": "latest",

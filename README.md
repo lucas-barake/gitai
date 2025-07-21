@@ -1,4 +1,4 @@
-# AI Git Assistant (`git-gen`)
+# AI Git Assistant (`gitai`)
 
 A command-line tool that acts as a general-purpose AI assistant for your git workflow. It can automatically generate PR titles and descriptions, provide code reviews, generate commit messages, and more, streamlining your workflow.
 
@@ -24,8 +24,7 @@ This CLI tool connects to the GitHub (`gh`) CLI and a generative AI to perform t
 Before you begin, ensure you have the following installed and configured:
 
 1.  **[Bun](https://bun.sh/)**: The runtime used to execute the script.
-2.  **[pnpm](https://pnpm.io/)**: Used for dependency management and creating the global link.
-3.  **[GitHub CLI](https://cli.github.com/)**: The tool used to interact with GitHub.
+2.  **[GitHub CLI](https://cli.github.com/)**: The tool used to interact with GitHub.
     - Make sure you are authenticated by running `gh auth login`.
 
 ## Configuration
@@ -52,62 +51,66 @@ The application will automatically read the environment variable if it's provide
 
 ```bash
 # The `bw run` command injects the secret into the command's environment
-bw run -- git-gen gh
+bw run -- gitai gh
 ```
 
 **Example with Doppler:**
 
 ```bash
 # The `doppler run` command works similarly
-doppler run -- git-gen commit
+doppler run -- gitai commit
 ```
 
 Using this wrapper pattern is the most secure way to provide credentials to the application.
 
 ## Installation
 
-Follow these steps to set up the `git-gen` command on your local machine.
+Follow these steps to set up the `gitai` command on your local machine.
 
-### 1\. Clone the Repository
+### 1. Clone the Repository
 
 First, clone this project to your local machine.
 
-### 2\. Install Dependencies
+### 2. Install Dependencies
 
-Install the necessary Node.js packages using `pnpm`.
-
-```bash
-pnpm install
-```
-
-### 3\. Make the Script Executable
-
-Grant execute permissions to the main script file, `src/Main.ts`. This allows the system to run it directly via the symbolic link.
+Install the necessary packages using Bun:
 
 ```bash
-chmod +x src/Main.ts
+bun install
 ```
 
-### 4\. Create the Global Link
+### 3. Build the Binary
 
-Use `pnpm` to create a global symbolic link to your script. This makes the `git-gen` command available from any directory in your terminal.
+Run the build script to compile the application into a single executable file:
 
 ```bash
-pnpm link --global
+bun run build
 ```
 
-> **Note:** If this is your first time using `pnpm` for global links, you may need to run `pnpm setup` and restart your terminal or source your shell's config file (e.g., `source ~/.zshrc`) to update your system's `PATH`.
+This will create a `gitai` executable in the project root.
+
+### 4. Link the Binary for Global Access
+
+To use the `gitai` command from anywhere, create a symbolic link from the compiled binary to a directory in your system's `PATH`. This ensures that whenever you rebuild the binary, the global command is automatically updated. A common location is `/usr/local/bin`.
+
+```bash
+ln -s "$(pwd)/gitai" /usr/local/bin/gitai
+```
+
+> **Note:** You might need to use `sudo` to create the link in `/usr/local/bin` depending on your system's permissions. If a file already exists at that location, you may need to remove it first.
+
+Once linked, you can run `gitai` from any directory.
 
 ## Usage
 
-Once installed, you can use the `git-gen` command from within any local Git repository directory that has a GitHub remote.
+Once installed, you can use the `gitai` command from within any local Git repository directory that has a GitHub remote.
 
 ### GitHub Assistant (`gh`)
 
 Run the `gh` subcommand to start an interactive session for PR-related tasks.
 
 ```bash
-git-gen gh
+gitai gh
 ```
 
 The tool will then guide you through the process:
@@ -125,7 +128,7 @@ The tool will then guide you through the process:
 Run the `commit` subcommand to generate a commit message for your staged changes.
 
 ```bash
-git-gen commit
+gitai commit
 ```
 
 The tool will analyze your staged changes, generate a message, and ask for confirmation before committing.
@@ -143,50 +146,32 @@ feat(cli): add commit message generation
 ✅ Successfully committed changes!
 ```
 
+## Development
+
+For local development, you can run the tool directly from its source code without needing to build it after every change. This is the most efficient way to work when you are actively writing or testing code.
+
+Simply use the `gitai` script, which is configured in `package.json` to execute the main script:
+
+```bash
+bun run gitai
+```
+
+Any changes you save to the source files will be reflected immediately when you run this command.
+
 ### Getting Help
 
 To see all available commands and options, use the `--help` flag.
 
 ```bash
-git-gen --help
+gitai --help
 ```
 
 You can also get help for a specific subcommand:
 
 ```bash
-git-gen gh --help
+gitai gh --help
 ```
 
 ```bash
-git-gen commit --help
+gitai commit --help
 ```
-
-## Building for Production
-
-For a more permanent and performant setup, you can compile the application into a single binary.
-
-### 1. Build the Binary
-
-Run the build script to compile the application:
-
-```bash
-bun run build
-```
-
-This will create a `git-gen` executable file in the project root.
-
-### 2. Use the Binary
-
-You can now run the compiled application directly:
-
-```bash
-./git-gen --help
-```
-
-To make it available globally, you can move it to a directory in your system's `PATH`, such as `/usr/local/bin`:
-
-```bash
-mv git-gen /usr/local/bin/
-```
-
-Now you can run `git-gen` from anywhere.

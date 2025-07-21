@@ -118,9 +118,7 @@ const commitCommand = CliCommand.make("commit", {}, () =>
   }),
 );
 
-const main = CliCommand.make("git-gen").pipe(
-  CliCommand.withSubcommands([prCommand, commitCommand]),
-);
+const main = CliCommand.make("gitai").pipe(CliCommand.withSubcommands([prCommand, commitCommand]));
 
 const cli = CliCommand.run(main, {
   name: "AI Git Assistant",

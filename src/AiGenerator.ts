@@ -9,7 +9,7 @@ import {
 } from "./internal/prompts.js";
 import { makeOpenApiSchema } from "./internal/make-open-api-schema.js";
 
-export const REVIEW_COMMENT_TAG = "<!-- git-gen-review -->";
+export const REVIEW_COMMENT_TAG = "<!-- [gitai-review](https://github.com/lucas-barake/gitai) -->";
 
 export class AiGenerator extends Effect.Service<AiGenerator>()("AiGenerator", {
   dependencies: [AiLanguageModel.Default],

@@ -5,8 +5,10 @@ export class GitClient extends Effect.Service<GitClient>()("GitClient", {
   effect: Effect.gen(function* () {
     const executor = yield* CommandExecutor.CommandExecutor;
 
-    const getStagedDiff = Effect.fn("getStagedDiff")(function* () {
-      const getDiffCommand = Command.make("git", "diff", "--staged", "-U25");
+    const getStagedDiff = Effect.fn("getStagedDiff")(function* (contextLines?: number) {
+      const args = ["diff", "--staged"];
+      if (typeof contextLines === "number") args.push(`-U${contextLines}`);
+      const getDiffCommand = Command.make("git", ...args);
       const diff = yield* executor
         .string(getDiffCommand)
         .pipe(Effect.orDieWith(() => "Failed to get staged diff. Is git installed?"));

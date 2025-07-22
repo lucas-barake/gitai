@@ -17,6 +17,7 @@ const repoOption = Options.text("repo").pipe(
 
 const contextOption = Options.text("context").pipe(
   Options.optional,
+  Options.withAlias("c"),
   Options.withDescription("Provide extra context to the AI for generating content."),
 );
 
@@ -109,14 +110,23 @@ const prCommand = Command.make(
   }),
 );
 
+const contextLines = Options.integer("contextLines").pipe(
+  Options.optional,
+  Options.map((value) => Option.getOrElse(value, () => 3)),
+  Options.withAlias("cl"),
+  Options.withDescription(
+    "Number of context lines for git diff (default: 3, same as git's default)",
+  ),
+);
+
 const commitCommand = Command.make(
   "commit",
-  { contextOption },
-  Effect.fn(function* ({ contextOption }) {
+  { contextOption, contextLines },
+  Effect.fn(function* ({ contextLines, contextOption }) {
     const ai = yield* AiGenerator;
     const git = yield* GitClient;
 
-    const diff = yield* git.getStagedDiff();
+    const diff = yield* git.getStagedDiff(contextLines);
     if (String.isEmpty(diff)) {
       yield* Effect.log("No staged changes found. Nothing to commit.");
       return;

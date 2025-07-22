@@ -55,7 +55,7 @@ export class AiLanguageModel extends Effect.Service<AiLanguageModel>()("AiLangua
             "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent",
             {
               body: HttpBody.unsafeJson({
-                contents: [{ parts: [{ text: prompt }] }],
+                contents: [{ parts: [{ text: options.prompt }] }],
                 generationConfig: {
                   response_mime_type: "application/json",
                   response_schema: makeOpenApiSchema(options.schema),

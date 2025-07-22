@@ -1,3 +1,14 @@
+import { Option } from "effect";
+
+const makeContextSnippet = (context: Option.Option<string>) =>
+  context.pipe(
+    Option.map(
+      (ctx) =>
+        `\n## User-Provided Context\n\nTo provide additional clarity and insight, the user has offered the following context. This information should be used to guide the generation of the response, ensuring it aligns with the user's goals:\n\n> ${ctx}\n`,
+    ),
+    Option.getOrElse(() => ""),
+  );
+
 const TITLE_PROMPT_SECTION = `- **Follow the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification:** \`type(scope): subject\`.
   - **\`type\`**: Must be one of \`feat\`, \`fix\`, \`improvement\`, \`refactor\`, \`perf\`, \`docs\`, \`style\`, \`test\`, \`build\`, \`ci\`, \`ops\`, \`chore\`, \`revert\`, \`security\`, or \`deprecate\`.
   - **\`scope\` (optional)**: Be specific. Derive the scope from the primary feature or area affected. Look at the file paths in the diff (e.g., \`packages/server/src/public/experiments/...\`) to determine the most relevant scope (e.g., \`experiments\`, \`auth\`, \`billing\`). Avoid generic scopes like \`server\` or \`client\` if a more specific one is available.
@@ -7,10 +18,9 @@ const TITLE_PROMPT_SECTION = `- **Follow the [Conventional Commits](https://www.
 // PR Details
 // ----------------------
 
-export const makePrDetailsPrompt = (
-  diff: string,
-) => `You are an expert software engineer writing a commit message. Your task is to analyze the provided git diff and generate a concise, professional PR title and description that will be used as the squashed commit message.
-
+export const makePrDetailsPrompt = (diff: string, context: Option.Option<string>) =>
+  `You are an expert software engineer writing a commit message. Your task is to analyze the provided git diff and generate a concise, professional PR title and description that will be used as the squashed commit message.
+${makeContextSnippet(context)}
 Your response should be succinct but thorough—include all important information, but avoid unnecessary verbosity.
 
 ## Format Requirements
@@ -43,10 +53,9 @@ Analyze the following git diff and generate the PR title, description, and file 
 // Commit Message
 // ----------------------
 
-export const makeCommitMessagePrompt = (
-  diff: string,
-) => `You are an expert senior software engineer with years of experience writing exemplary Git commit messages for high-performing teams. Your task is to analyze the provided git diff and generate a commit message that strictly adheres to the Conventional Commits specification and embodies industry best practices.
-
+export const makeCommitMessagePrompt = (diff: string, context: Option.Option<string>) =>
+  `You are an expert senior software engineer with years of experience writing exemplary Git commit messages for high-performing teams. Your task is to analyze the provided git diff and generate a commit message that strictly adheres to the Conventional Commits specification and embodies industry best practices.
+${makeContextSnippet(context)}
 Your generated message must be clear, concise, and provide meaningful context for future developers, code reviewers, and automated tooling.
 
 ## Guiding Principles
@@ -128,10 +137,9 @@ Analyze the following git diff and generate the commit message in the specified 
 // PR Title
 // ----------------------
 
-export const makeTitlePrompt = (
-  diff: string,
-) => `You are an expert software engineer writing a commit message. Your task is to analyze the provided git diff and generate a concise, professional PR title.
-
+export const makeTitlePrompt = (diff: string, context: Option.Option<string>) =>
+  `You are an expert software engineer writing a commit message. Your task is to analyze the provided git diff and generate a concise, professional PR title.
+${makeContextSnippet(context)}
 ## Format Requirements
 
 ${TITLE_PROMPT_SECTION}
@@ -153,10 +161,9 @@ Analyze the following git diff and generate the PR title in the specified JSON f
 // PR Review
 // ----------------------
 
-export const makeReviewPrompt = (
-  diff: string,
-) => `You are an expert code reviewer with a keen eye for detail. Your task is to analyze the provided git diff and generate a constructive review.
-
+export const makeReviewPrompt = (diff: string, context: Option.Option<string>) =>
+  `You are an expert code reviewer with a keen eye for detail. Your task is to analyze the provided git diff and generate a constructive review.
+${makeContextSnippet(context)}
 ## Review Focus
 Your feedback must be focused on the following areas:
 - **Security Vulnerabilities**: Identify potential security risks.

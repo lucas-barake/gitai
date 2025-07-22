@@ -15,10 +15,15 @@ const repoOption = Options.text("repo").pipe(
   ),
 );
 
+const contextOption = Options.text("context").pipe(
+  Options.optional,
+  Options.withDescription("Provide extra context to the AI for generating content."),
+);
+
 const prCommand = Command.make(
   "gh",
-  { repoOption },
-  Effect.fn(function* ({ repoOption }) {
+  { repoOption, contextOption },
+  Effect.fn(function* ({ contextOption, repoOption }) {
     const ai = yield* AiGenerator;
     const github = yield* GitHubClient;
 
@@ -54,7 +59,7 @@ const prCommand = Command.make(
     switch (action) {
       case "details": {
         yield* Effect.log(`Generating PR title and description for PR #${prNumber}...`);
-        const details = yield* ai.generatePrDetails(diff);
+        const details = yield* ai.generatePrDetails(diff, contextOption);
         yield* Effect.log(`Generated PR details:\n${JSON.stringify(details, null, 2)}`);
 
         yield* Effect.log(`Updating PR #${prNumber} on GitHub...`);
@@ -77,7 +82,7 @@ const prCommand = Command.make(
         yield* Effect.logDebug(`Found ${comments.length} comments for PR #${prNumber}`);
 
         yield* Effect.log(`Generating review for PR #${prNumber}...`);
-        const markdown = yield* ai.generateReview(diff);
+        const markdown = yield* ai.generateReview(diff, contextOption);
         yield* Effect.log(`\nGenerated Review:\n${markdown}`);
 
         yield* Effect.log(`Adding new review comment to PR #${prNumber}...`);
@@ -93,7 +98,7 @@ const prCommand = Command.make(
       }
       case "title": {
         yield* Effect.log("Generating PR title...");
-        const title = yield* ai.generateTitle(diff);
+        const title = yield* ai.generateTitle(diff, contextOption);
         yield* Effect.log(`\nGenerated PR Title:\n\n${title}\n`);
 
         yield* github.updatePr({ prNumber, repo: nameWithOwner, title });
@@ -106,8 +111,8 @@ const prCommand = Command.make(
 
 const commitCommand = Command.make(
   "commit",
-  {},
-  Effect.fn(function* () {
+  { contextOption },
+  Effect.fn(function* ({ contextOption }) {
     const ai = yield* AiGenerator;
     const git = yield* GitClient;
 
@@ -118,7 +123,7 @@ const commitCommand = Command.make(
     }
 
     yield* Effect.log("Generating commit message...");
-    const message = yield* ai.generateCommitMessage(diff);
+    const message = yield* ai.generateCommitMessage(diff, contextOption);
     yield* Effect.log(`Generated commit message:\n\n${message}\n`);
 
     const confirm = yield* Prompt.confirm({

@@ -1,3 +1,4 @@
+import type { Option } from "effect";
 import { Effect } from "effect";
 import { AiLanguageModel } from "./AiLanguageModel.js";
 import { CommitMessage, PrDetails, PrReviewDetails, PrTitle } from "./internal/schemas.js";
@@ -69,59 +70,63 @@ ${fileSummaries}
       ),
     );
 
-    const generatePrDetails = Effect.fn("AiGenerator.generatePrDetails")((diff: string) =>
-      filterDiff(diff).pipe(
-        Effect.flatMap((diff) =>
-          ai.generateObject({
-            prompt: makePrDetailsPrompt(diff),
-            schema: PrDetails,
-          }),
+    const generatePrDetails = Effect.fn("AiGenerator.generatePrDetails")(
+      (diff: string, context: Option.Option<string>) =>
+        filterDiff(diff).pipe(
+          Effect.flatMap((diff) =>
+            ai.generateObject({
+              prompt: makePrDetailsPrompt(diff, context),
+              schema: PrDetails,
+            }),
+          ),
+          Effect.map((details) => ({
+            title: details.title,
+            body: formatPrDescription(details),
+          })),
+          orDie("Failed to generate PR details"),
         ),
-        Effect.map((details) => ({
-          title: details.title,
-          body: formatPrDescription(details),
-        })),
-        orDie("Failed to generate PR details"),
-      ),
     );
 
-    const generateCommitMessage = Effect.fn("AiGenerator.generateCommitMessage")((diff: string) =>
-      filterDiff(diff).pipe(
-        Effect.flatMap((diff) =>
-          ai.generateObject({
-            prompt: makeCommitMessagePrompt(diff),
-            schema: CommitMessage,
-          }),
+    const generateCommitMessage = Effect.fn("AiGenerator.generateCommitMessage")(
+      (diff: string, context: Option.Option<string>) =>
+        filterDiff(diff).pipe(
+          Effect.flatMap((diff) =>
+            ai.generateObject({
+              prompt: makeCommitMessagePrompt(diff, context),
+              schema: CommitMessage,
+            }),
+          ),
+          Effect.map((generated) => generated.message),
+          orDie("Failed to generate commit message"),
         ),
-        Effect.map((generated) => generated.message),
-        orDie("Failed to generate commit message"),
-      ),
     );
 
-    const generateTitle = Effect.fn("AiGenerator.generateTitle")((diff: string) =>
-      filterDiff(diff).pipe(
-        Effect.flatMap((diff) =>
-          ai.generateObject({
-            prompt: makeTitlePrompt(diff),
-            schema: PrTitle,
-          }),
+    const generateTitle = Effect.fn("AiGenerator.generateTitle")(
+      (diff: string, context: Option.Option<string>) =>
+        filterDiff(diff).pipe(
+          Effect.flatMap((diff) =>
+            ai.generateObject({
+              prompt: makeTitlePrompt(diff, context),
+              schema: PrTitle,
+            }),
+          ),
+          Effect.map((generated) => generated.title),
+          orDie("Failed to generate PR title"),
         ),
-        Effect.map((generated) => generated.title),
-        orDie("Failed to generate PR title"),
-      ),
     );
 
-    const generateReview = Effect.fn("AiGenerator.generateReview")((diff: string) =>
-      filterDiff(diff).pipe(
-        Effect.flatMap((diff) =>
-          ai.generateObject({
-            prompt: makeReviewPrompt(diff),
-            schema: PrReviewDetails,
-          }),
+    const generateReview = Effect.fn("AiGenerator.generateReview")(
+      (diff: string, context: Option.Option<string>) =>
+        filterDiff(diff).pipe(
+          Effect.flatMap((diff) =>
+            ai.generateObject({
+              prompt: makeReviewPrompt(diff, context),
+              schema: PrReviewDetails,
+            }),
+          ),
+          Effect.map(formatReviewAsMarkdown),
+          orDie("Failed to generate review"),
         ),
-        Effect.map(formatReviewAsMarkdown),
-        orDie("Failed to generate review"),
-      ),
     );
 
     return {

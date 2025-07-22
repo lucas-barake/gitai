@@ -144,8 +144,10 @@ const MainLayer = Layer.mergeAll(
   AiLanguageModel.Default,
   GitHubClient.Default,
   GitClient.Default,
-  Logger.replace(Logger.defaultLogger, cliLogger),
-).pipe(Layer.provideMerge(BunContext.layer));
+).pipe(
+  Layer.provideMerge(BunContext.layer),
+  Layer.provideMerge(Logger.replace(Logger.defaultLogger, cliLogger)),
+);
 
 cli(process.argv).pipe(
   Effect.tapErrorCause((cause) => {

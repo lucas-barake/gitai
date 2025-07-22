@@ -95,6 +95,9 @@ export class GitHubClient extends Effect.Service<GitHubClient>()("GitHubClient",
           Effect.tapError((error) =>
             Effect.logWarning(`Failed to list comments for PR #${prNumber}: ${error.message}`),
           ),
+          Effect.tap((comments) =>
+            Effect.log(`Found ${comments.length} comments for PR #${prNumber}`),
+          ),
           Effect.orElseSucceed(constant([])),
         );
       }).pipe(Effect.withSpan("GitHubClient.listPrComments"));

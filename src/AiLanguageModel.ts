@@ -35,6 +35,7 @@ export class AiLanguageModel extends Effect.Service<AiLanguageModel>()("AiLangua
   dependencies: [FetchHttpClient.layer],
   effect: Effect.gen(function* () {
     const apiKey = yield* Config.redacted("GOOGLE_AI_API_KEY");
+
     const httpClient = (yield* HttpClient.HttpClient).pipe(
       HttpClient.mapRequest((request) =>
         request.pipe(HttpClientRequest.setHeader("x-goog-api-key", Redacted.value(apiKey))),
@@ -46,11 +47,9 @@ export class AiLanguageModel extends Effect.Service<AiLanguageModel>()("AiLangua
       }),
     );
 
-    const generateObject = <A, I extends Record<string, unknown>>(
-      options: GenerateObjectOptions<A, I>,
-    ) =>
-      Effect.gen(function* () {
-        const response = yield* httpClient
+    const generateObject = Effect.fn("AiLanguageModel.generateObject")(
+      <A, I extends Record<string, unknown>>(options: GenerateObjectOptions<A, I>) =>
+        httpClient
           .post(
             "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent",
             {
@@ -67,10 +66,9 @@ export class AiLanguageModel extends Effect.Service<AiLanguageModel>()("AiLangua
             Effect.flatMap(
               HttpClientResponse.schemaBodyJson(makeSchemaFromResponse(options.schema)),
             ),
-          );
-
-        return response.candidates[0].content.parts[0].parsed;
-      }).pipe(Effect.withSpan("AiLanguageModel.generateObject"));
+            Effect.map((response) => response.candidates[0].content.parts[0].parsed),
+          ),
+    );
 
     return {
       generateObject,

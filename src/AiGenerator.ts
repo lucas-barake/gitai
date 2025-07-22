@@ -50,7 +50,7 @@ ${fileSummaries}
     /**
      * Removes configuration files from diff to focus AI analysis on code changes
      */
-    const filterDiff = (rawDiff: string) =>
+    const filterDiff = Effect.fn("filterDiff")((rawDiff: string) =>
       Effect.sync(() =>
         rawDiff
           .split("diff --git")
@@ -66,9 +66,10 @@ ${fileSummaries}
           })
           .map((part) => `diff --git${part}`)
           .join(""),
-      ).pipe(Effect.withSpan("AiGenerator.filterDiff"));
+      ),
+    );
 
-    const generatePrDetails = (diff: string) =>
+    const generatePrDetails = Effect.fn("AiGenerator.generatePrDetails")((diff: string) =>
       filterDiff(diff).pipe(
         Effect.flatMap((diff) =>
           ai.generateObject({
@@ -81,10 +82,10 @@ ${fileSummaries}
           body: formatPrDescription(details),
         })),
         orDie("Failed to generate PR details"),
-        Effect.withSpan("AiGenerator.generatePrDetailsFromDiff"),
-      );
+      ),
+    );
 
-    const generateCommitMessage = (diff: string) =>
+    const generateCommitMessage = Effect.fn("AiGenerator.generateCommitMessage")((diff: string) =>
       filterDiff(diff).pipe(
         Effect.flatMap((diff) =>
           ai.generateObject({
@@ -94,10 +95,10 @@ ${fileSummaries}
         ),
         Effect.map((generated) => generated.message),
         orDie("Failed to generate commit message"),
-        Effect.withSpan("AiGenerator.generateCommitMessageFromDiff"),
-      );
+      ),
+    );
 
-    const generateTitle = (diff: string) =>
+    const generateTitle = Effect.fn("AiGenerator.generateTitle")((diff: string) =>
       filterDiff(diff).pipe(
         Effect.flatMap((diff) =>
           ai.generateObject({
@@ -107,10 +108,10 @@ ${fileSummaries}
         ),
         Effect.map((generated) => generated.title),
         orDie("Failed to generate PR title"),
-        Effect.withSpan("AiGenerator.generateTitleFromDiff"),
-      );
+      ),
+    );
 
-    const generateReview = (diff: string) =>
+    const generateReview = Effect.fn("AiGenerator.generateReview")((diff: string) =>
       filterDiff(diff).pipe(
         Effect.flatMap((diff) =>
           ai.generateObject({
@@ -120,8 +121,8 @@ ${fileSummaries}
         ),
         Effect.map(formatReviewAsMarkdown),
         orDie("Failed to generate review"),
-        Effect.withSpan("AiGenerator.generateReviewFromDiff"),
-      );
+      ),
+    );
 
     return {
       generatePrDetails,

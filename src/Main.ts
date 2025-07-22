@@ -15,8 +15,10 @@ const repoOption = Options.text("repo").pipe(
   ),
 );
 
-const prCommand = Command.make("gh", { repoOption }, ({ repoOption }) =>
-  Effect.gen(function* () {
+const prCommand = Command.make(
+  "gh",
+  { repoOption },
+  Effect.fnUntraced(function* ({ repoOption }) {
     const ai = yield* AiGenerator;
     const github = yield* GitHubClient;
 
@@ -94,8 +96,10 @@ const prCommand = Command.make("gh", { repoOption }, ({ repoOption }) =>
   }),
 );
 
-const commitCommand = Command.make("commit", {}, () =>
-  Effect.gen(function* () {
+const commitCommand = Command.make(
+  "commit",
+  {},
+  Effect.fnUntraced(function* () {
     const ai = yield* AiGenerator;
     const git = yield* GitClient;
 

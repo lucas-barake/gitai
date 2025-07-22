@@ -39,7 +39,7 @@ export class AiLanguageModel extends Effect.Service<AiLanguageModel>()("AiLangua
       HttpClient.mapRequest((request) =>
         request.pipe(HttpClientRequest.setHeader("x-goog-api-key", Redacted.value(apiKey))),
       ),
-      HttpClient.tap((response) => response.text.pipe(Effect.flatMap(Effect.log))),
+      HttpClient.tap((response) => response.text.pipe(Effect.flatMap(Effect.logDebug))),
       HttpClient.retryTransient({
         times: 3,
         schedule: Schedule.exponential("1 second", 2),

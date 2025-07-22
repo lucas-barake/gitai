@@ -8,6 +8,11 @@ import {
   makeTitlePrompt,
 } from "./internal/prompts.js";
 
+const orDie =
+  (message: string) =>
+  <A, E extends { message: string }, R>(self: Effect.Effect<A, E, R>) =>
+    self.pipe(Effect.orDieWith((error) => `${message}: ${error.message}`));
+
 export const REVIEW_COMMENT_TAG = "<!-- [gitai-review](https://github.com/lucas-barake/gitai) -->";
 
 export class AiGenerator extends Effect.Service<AiGenerator>()("AiGenerator", {
@@ -64,80 +69,65 @@ ${fileSummaries}
       ).pipe(Effect.withSpan("AiGenerator.filterDiff"));
 
     const generatePrDetails = (diff: string) =>
-      Effect.gen(function* () {
-        const prompt = makePrDetailsPrompt(diff);
-
-        return yield* ai.generateObject({
-          prompt,
-          schema: PrDetails,
-        });
-      }).pipe(Effect.withSpan("AiGenerator.generatePrDetailsFromDiff"));
+      filterDiff(diff).pipe(
+        Effect.flatMap((diff) =>
+          ai.generateObject({
+            prompt: makePrDetailsPrompt(diff),
+            schema: PrDetails,
+          }),
+        ),
+        Effect.map((details) => ({
+          title: details.title,
+          body: formatPrDescription(details),
+        })),
+        orDie("Failed to generate PR details"),
+        Effect.withSpan("AiGenerator.generatePrDetailsFromDiff"),
+      );
 
     const generateCommitMessage = (diff: string) =>
-      Effect.gen(function* () {
-        const prompt = makeCommitMessagePrompt(diff);
-
-        const result = yield* ai.generateObject({
-          prompt,
-          schema: CommitMessage,
-        });
-
-        return result.message;
-      }).pipe(Effect.withSpan("AiGenerator.generateCommitMessageFromDiff"));
+      filterDiff(diff).pipe(
+        Effect.flatMap((diff) =>
+          ai.generateObject({
+            prompt: makeCommitMessagePrompt(diff),
+            schema: CommitMessage,
+          }),
+        ),
+        Effect.map((generated) => generated.message),
+        orDie("Failed to generate commit message"),
+        Effect.withSpan("AiGenerator.generateCommitMessageFromDiff"),
+      );
 
     const generateTitle = (diff: string) =>
-      Effect.gen(function* () {
-        const prompt = makeTitlePrompt(diff);
-
-        const result = yield* ai.generateObject({
-          prompt,
-          schema: PrTitle,
-        });
-
-        return result.title;
-      }).pipe(Effect.withSpan("AiGenerator.generateTitleFromDiff"));
+      filterDiff(diff).pipe(
+        Effect.flatMap((diff) =>
+          ai.generateObject({
+            prompt: makeTitlePrompt(diff),
+            schema: PrTitle,
+          }),
+        ),
+        Effect.map((generated) => generated.title),
+        orDie("Failed to generate PR title"),
+        Effect.withSpan("AiGenerator.generateTitleFromDiff"),
+      );
 
     const generateReview = (diff: string) =>
-      Effect.gen(function* () {
-        yield* Effect.log("Generating review...");
-        const prompt = makeReviewPrompt(diff);
-
-        const result = yield* ai.generateObject({
-          prompt,
-          schema: PrReviewDetails,
-        });
-
-        return result;
-      }).pipe(Effect.withSpan("AiGenerator.generateReviewFromDiff"));
-
-    const orDie =
-      (message: string) =>
-      <A, E extends { message: string }, R>(self: Effect.Effect<A, E, R>) =>
-        self.pipe(Effect.orDieWith((error) => `${message}: ${error.message}`));
+      filterDiff(diff).pipe(
+        Effect.flatMap((diff) =>
+          ai.generateObject({
+            prompt: makeReviewPrompt(diff),
+            schema: PrReviewDetails,
+          }),
+        ),
+        Effect.map(formatReviewAsMarkdown),
+        orDie("Failed to generate review"),
+        Effect.withSpan("AiGenerator.generateReviewFromDiff"),
+      );
 
     return {
-      generatePrDetails: (diff: string) =>
-        filterDiff(diff).pipe(
-          Effect.andThen(generatePrDetails),
-          Effect.map((details) => ({
-            title: details.title,
-            body: formatPrDescription(details),
-          })),
-          orDie("Failed to generate PR details"),
-        ),
-      generateCommitMessage: (diff: string) =>
-        filterDiff(diff).pipe(
-          Effect.andThen(generateCommitMessage),
-          orDie("Failed to generate commit message"),
-        ),
-      generateTitle: (diff: string) =>
-        filterDiff(diff).pipe(Effect.andThen(generateTitle), orDie("Failed to generate PR title")),
-      generateReview: (diff: string) =>
-        filterDiff(diff).pipe(
-          Effect.andThen(generateReview),
-          Effect.map(formatReviewAsMarkdown),
-          orDie("Failed to generate review"),
-        ),
+      generatePrDetails,
+      generateCommitMessage,
+      generateTitle,
+      generateReview,
     } as const;
   }),
 }) {}

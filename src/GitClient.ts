@@ -6,7 +6,7 @@ export class GitClient extends Effect.Service<GitClient>()("GitClient", {
     const executor = yield* CommandExecutor.CommandExecutor;
 
     const getStagedDiff = Effect.gen(function* () {
-      const getDiffCommand = Command.make("git", "diff", "--staged");
+      const getDiffCommand = Command.make("git", "diff", "--staged", "-U50");
       const diff = yield* executor
         .string(getDiffCommand)
         .pipe(Effect.orDieWith(() => "Failed to get staged diff. Is git installed?"));

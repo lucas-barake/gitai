@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { Command as CliCommand, Options, Prompt } from "@effect/cli";
+import { Command, Options, Prompt } from "@effect/cli";
 import { BunContext, BunRuntime } from "@effect/platform-bun";
 import { Cause, Effect, Logger, Option, String } from "effect";
 import { AiGenerator, REVIEW_COMMENT_TAG } from "./AiGenerator.js";
@@ -15,7 +15,7 @@ const repoOption = Options.text("repo").pipe(
   ),
 );
 
-const prCommand = CliCommand.make("gh", { repoOption }, ({ repoOption }) =>
+const prCommand = Command.make("gh", { repoOption }, ({ repoOption }) =>
   Effect.gen(function* () {
     const ai = yield* AiGenerator;
     const github = yield* GitHubClient;
@@ -94,7 +94,7 @@ const prCommand = CliCommand.make("gh", { repoOption }, ({ repoOption }) =>
   }),
 );
 
-const commitCommand = CliCommand.make("commit", {}, () =>
+const commitCommand = Command.make("commit", {}, () =>
   Effect.gen(function* () {
     const ai = yield* AiGenerator;
     const git = yield* GitClient;
@@ -120,9 +120,9 @@ const commitCommand = CliCommand.make("commit", {}, () =>
   }),
 );
 
-const main = CliCommand.make("gitai").pipe(CliCommand.withSubcommands([prCommand, commitCommand]));
+const main = Command.make("gitai").pipe(Command.withSubcommands([prCommand, commitCommand]));
 
-const cli = CliCommand.run(main, {
+const cli = Command.run(main, {
   name: "AI Git Assistant",
   version: "2.0.0",
 });

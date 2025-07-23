@@ -46,19 +46,24 @@ export class OptionsContext extends Context.Tag("cli/OptionsContext")<
     readonly contextLines: FromOptions<typeof contextLinesOption>;
   }
 >() {
-  static readonly provide: (
+  static readonly provide = <A, E, R>(
+    self: Effect.Effect<A, E, R>,
     opts: Partial<{
       readonly repoOption: FromOptions<typeof repoOption>;
       readonly contextOption: FromOptions<typeof contextOption>;
       readonly modelOption: FromOptions<typeof modelOption>;
       readonly contextLinesOption: FromOptions<typeof contextLinesOption>;
     }>,
-  ) => <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, OptionsContext>> =
-    (opts) =>
+  ) =>
+    self.pipe(
       Effect.provideService(this, {
         repo: opts.repoOption ?? Option.none(),
         context: opts.contextOption ?? Option.none(),
         model: opts.modelOption ?? "gemini-2.5-flash",
         contextLines: opts.contextLinesOption ?? Option.none<number>(),
-      });
+      }),
+      Effect.annotateLogs({
+        model: opts.modelOption ?? "gemini-2.5-flash",
+      }),
+    );
 }

@@ -35,6 +35,7 @@ cli(process.argv).pipe(
     return Effect.logError(cause);
   }),
   Effect.provide(MainLayer),
+  Effect.scoped,
   BunRuntime.runMain({
     disablePrettyLogger: true,
     disableErrorReporting: true,

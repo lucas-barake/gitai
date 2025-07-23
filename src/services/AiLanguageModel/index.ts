@@ -1,1 +1,1 @@
-export { AiLanguageModel } from "./AiLanguageModel.js";
+export * from "./AiLanguageModel.js";

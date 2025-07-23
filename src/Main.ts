@@ -1,155 +1,18 @@
 #!/usr/bin/env bun
-import { Command, Options, Prompt } from "@effect/cli";
+import { Command } from "@effect/cli";
 import { BunContext, BunRuntime } from "@effect/platform-bun";
-import { Cause, Effect, Layer, Logger, Option, String } from "effect";
-import { AiGenerator, REVIEW_COMMENT_TAG } from "./AiGenerator.js";
-import { AiLanguageModel } from "./AiLanguageModel.js";
-import { cliLogger } from "./CliLogger.js";
-import { GitClient } from "./GitClient.js";
-import { GitHubClient } from "./GitHubClient.js";
+import { Cause, Effect, Layer, Logger } from "effect";
+import { AiGenerator } from "./services/AiGenerator/index.js";
+import { AiLanguageModel } from "./services/AiLanguageModel/index.js";
+import { cliLogger } from "./services/CliLogger.js";
+import { GitClient } from "./services/GitClient.js";
+import { GitHubClient } from "./services/GitHubClient.js";
+import { CommitCommand } from "./commands/CommitCommand.js";
+import { GhCommand } from "./commands/GhCommand.js";
 
-const repoOption = Options.text("repo").pipe(
-  Options.optional,
-  Options.withDescription(
-    "Specify a custom repository (e.g., 'owner/repo'). Defaults to local detection.",
-  ),
-);
+const MainCommand = Command.make("gitai").pipe(Command.withSubcommands([GhCommand, CommitCommand]));
 
-const contextOption = Options.text("context").pipe(
-  Options.optional,
-  Options.withAlias("c"),
-  Options.withDescription("Provide extra context to the AI for generating content."),
-);
-
-const prCommand = Command.make(
-  "gh",
-  { repoOption, contextOption },
-  Effect.fn(function* ({ contextOption, repoOption }) {
-    const ai = yield* AiGenerator;
-    const github = yield* GitHubClient;
-
-    const nameWithOwner = yield* Option.match(repoOption, {
-      onNone: () =>
-        Effect.log("Detecting current repository...").pipe(Effect.zipRight(github.getLocalRepo())),
-      onSome: (repo) => Effect.succeed(repo),
-    });
-    yield* Effect.log(`Using repository: ${nameWithOwner}`);
-
-    const prNumber = yield* Prompt.text({
-      message: "Please enter the PR number:",
-    });
-
-    yield* Effect.log(`Fetching diff for PR #${prNumber}...`);
-    const diff = yield* github.getPrDiff(prNumber, nameWithOwner);
-    yield* Effect.logDebug(`Diff for PR #${prNumber}: ${diff}`);
-
-    if (String.isEmpty(diff)) {
-      yield* Effect.log("PR diff is empty. Nothing to generate.");
-      return;
-    }
-
-    const action = yield* Prompt.select({
-      message: "What would you like to do?",
-      choices: [
-        { title: "Generate title and description", value: "details" as const },
-        { title: "Generate title only", value: "title" as const },
-        { title: "Generate a review and post as a comment", value: "review" as const },
-      ],
-    });
-
-    switch (action) {
-      case "details": {
-        yield* Effect.log(`Generating PR title and description for PR #${prNumber}...`);
-        const details = yield* ai.generatePrDetails(diff, contextOption);
-        yield* Effect.log(`Generated PR details:\n${JSON.stringify(details, null, 2)}`);
-
-        yield* Effect.log(`Updating PR #${prNumber} on GitHub...`);
-        yield* github.updatePr({
-          prNumber,
-          repo: nameWithOwner,
-          title: details.title,
-          body: details.body,
-        });
-        yield* Effect.log(`✅ Successfully updated PR #${prNumber} on GitHub!`);
-        break;
-      }
-      case "review": {
-        yield* Effect.log(`Listing comments for PR #${prNumber}...`);
-        const comments = yield* github.listPrComments(prNumber, nameWithOwner);
-
-        const previousComment = comments.find((comment) =>
-          comment.body.includes(REVIEW_COMMENT_TAG),
-        );
-        yield* Effect.logDebug(`Found ${comments.length} comments for PR #${prNumber}`);
-
-        yield* Effect.log(`Generating review for PR #${prNumber}...`);
-        const markdown = yield* ai.generateReview(diff, contextOption);
-        yield* Effect.log(`\nGenerated Review:\n${markdown}`);
-
-        yield* Effect.log(`Adding new review comment to PR #${prNumber}...`);
-        yield* github.addPrComment({ prNumber, repo: nameWithOwner, body: markdown });
-        yield* Effect.log(`✅ Successfully added review comment to PR #${prNumber}!`);
-
-        if (previousComment) {
-          yield* Effect.log(`Deleting previous review comment...`);
-          yield* github.deletePrComment(previousComment.id);
-        }
-
-        break;
-      }
-      case "title": {
-        yield* Effect.log("Generating PR title...");
-        const title = yield* ai.generateTitle(diff, contextOption);
-        yield* Effect.log(`\nGenerated PR Title:\n\n${title}\n`);
-
-        yield* github.updatePr({ prNumber, repo: nameWithOwner, title });
-        yield* Effect.log(`✅ Successfully updated PR #${prNumber} on GitHub!`);
-        break;
-      }
-    }
-  }),
-);
-
-const contextLines = Options.integer("contextLines").pipe(
-  Options.optional,
-  Options.map((value) => Option.getOrElse(value, () => 3)),
-  Options.withAlias("cl"),
-  Options.withDescription(
-    "Number of context lines for git diff (default: 3, same as git's default)",
-  ),
-);
-
-const commitCommand = Command.make(
-  "commit",
-  { contextOption, contextLines },
-  Effect.fn(function* ({ contextLines, contextOption }) {
-    const ai = yield* AiGenerator;
-    const git = yield* GitClient;
-
-    const diff = yield* git.getStagedDiff(contextLines);
-    if (String.isEmpty(diff)) {
-      yield* Effect.log("No staged changes found. Nothing to commit.");
-      return;
-    }
-
-    yield* Effect.log("Generating commit message...");
-    const message = yield* ai.generateCommitMessage(diff, contextOption);
-    yield* Effect.log(`Generated commit message:\n\n${message}\n`);
-
-    const confirm = yield* Prompt.confirm({
-      message: "Would you like to commit with this message?",
-    });
-
-    if (confirm) {
-      yield* git.commit(message);
-      yield* Effect.log("✅ Successfully committed changes!");
-    }
-  }),
-);
-
-const mainCommand = Command.make("gitai").pipe(Command.withSubcommands([prCommand, commitCommand]));
-
-const cli = Command.run(mainCommand, {
+const cli = Command.run(MainCommand, {
   name: "AI Git Assistant",
   version: "2.0.0",
 });

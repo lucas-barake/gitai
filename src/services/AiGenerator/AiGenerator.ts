@@ -1,13 +1,13 @@
-import type { Option } from "effect";
 import { Effect } from "effect";
-import { AiLanguageModel } from "./AiLanguageModel.js";
-import { CommitMessage, PrDetails, PrReviewDetails, PrTitle } from "./internal/schemas.js";
+import { AiLanguageModel } from "@/services/AiLanguageModel/AiLanguageModel.js";
+import { CommitMessage, PrDetails, PrReviewDetails, PrTitle } from "./schemas.js";
 import {
   makeCommitMessagePrompt,
   makePrDetailsPrompt,
   makeReviewPrompt,
   makeTitlePrompt,
-} from "./internal/prompts.js";
+} from "./prompts.js";
+import { OptionsContext } from "@/Options.js";
 
 const orDie =
   (message: string) =>
@@ -70,64 +70,71 @@ ${fileSummaries}
       ),
     );
 
-    const generatePrDetails = Effect.fn("AiGenerator.generatePrDetails")(
-      (diff: string, context: Option.Option<string>) =>
-        filterDiff(diff).pipe(
-          Effect.flatMap((diff) =>
-            ai.generateObject({
-              prompt: makePrDetailsPrompt(diff, context),
-              schema: PrDetails,
-            }),
-          ),
+    const generatePrDetails = Effect.fn("AiGenerator.generatePrDetails")(function* (diff: string) {
+      const opts = yield* OptionsContext;
+      const filteredDiff = yield* filterDiff(diff);
+
+      return yield* ai
+        .generateObject({
+          model: opts.model,
+          prompt: makePrDetailsPrompt(filteredDiff, opts.context),
+          schema: PrDetails,
+        })
+        .pipe(
           Effect.map((details) => ({
             title: details.title,
             body: formatPrDescription(details),
           })),
           orDie("Failed to generate PR details"),
-        ),
-    );
+        );
+    });
 
-    const generateCommitMessage = Effect.fn("AiGenerator.generateCommitMessage")(
-      (diff: string, context: Option.Option<string>) =>
-        filterDiff(diff).pipe(
-          Effect.flatMap((diff) =>
-            ai.generateObject({
-              prompt: makeCommitMessagePrompt(diff, context),
-              schema: CommitMessage,
-            }),
-          ),
+    const generateCommitMessage = Effect.fn("AiGenerator.generateCommitMessage")(function* (
+      diff: string,
+    ) {
+      const opts = yield* OptionsContext;
+      const filteredDiff = yield* filterDiff(diff);
+
+      return yield* ai
+        .generateObject({
+          model: opts.model,
+          prompt: makeCommitMessagePrompt(filteredDiff, opts.context),
+          schema: CommitMessage,
+        })
+        .pipe(
           Effect.map((generated) => generated.message),
           orDie("Failed to generate commit message"),
-        ),
-    );
+        );
+    });
 
-    const generateTitle = Effect.fn("AiGenerator.generateTitle")(
-      (diff: string, context: Option.Option<string>) =>
-        filterDiff(diff).pipe(
-          Effect.flatMap((diff) =>
-            ai.generateObject({
-              prompt: makeTitlePrompt(diff, context),
-              schema: PrTitle,
-            }),
-          ),
+    const generateTitle = Effect.fn("AiGenerator.generateTitle")(function* (diff: string) {
+      const opts = yield* OptionsContext;
+      const filteredDiff = yield* filterDiff(diff);
+
+      return yield* ai
+        .generateObject({
+          model: opts.model,
+          prompt: makeTitlePrompt(filteredDiff, opts.context),
+          schema: PrTitle,
+        })
+        .pipe(
           Effect.map((generated) => generated.title),
           orDie("Failed to generate PR title"),
-        ),
-    );
+        );
+    });
 
-    const generateReview = Effect.fn("AiGenerator.generateReview")(
-      (diff: string, context: Option.Option<string>) =>
-        filterDiff(diff).pipe(
-          Effect.flatMap((diff) =>
-            ai.generateObject({
-              prompt: makeReviewPrompt(diff, context),
-              schema: PrReviewDetails,
-            }),
-          ),
-          Effect.map(formatReviewAsMarkdown),
-          orDie("Failed to generate review"),
-        ),
-    );
+    const generateReview = Effect.fn("AiGenerator.generateReview")(function* (diff: string) {
+      const opts = yield* OptionsContext;
+      const filteredDiff = yield* filterDiff(diff);
+
+      return yield* ai
+        .generateObject({
+          model: opts.model,
+          prompt: makeReviewPrompt(filteredDiff, opts.context),
+          schema: PrReviewDetails,
+        })
+        .pipe(Effect.map(formatReviewAsMarkdown), orDie("Failed to generate review"));
+    });
 
     return {
       generatePrDetails,

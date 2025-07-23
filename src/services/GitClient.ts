@@ -1,14 +1,17 @@
 import { Command, CommandExecutor } from "@effect/platform";
-import { Effect } from "effect";
+import { Effect, Option } from "effect";
+import { OptionsContext } from "@/Options.js";
 
 export class GitClient extends Effect.Service<GitClient>()("GitClient", {
   effect: Effect.gen(function* () {
     const executor = yield* CommandExecutor.CommandExecutor;
 
-    const getStagedDiff = Effect.fn("getStagedDiff")(function* (contextLines?: number) {
-      const args = ["diff", "--staged"];
-      if (typeof contextLines === "number") args.push(`-U${contextLines}`);
-      const getDiffCommand = Command.make("git", ...args);
+    const getStagedDiff = Effect.fn("getStagedDiff")(function* () {
+      const opts = yield* OptionsContext;
+      const getDiffCommand = Command.make(
+        "git",
+        ...["diff", "--staged", `-U${Option.getOrElse(opts.contextLines, () => 3)}`],
+      );
       const diff = yield* executor
         .string(getDiffCommand)
         .pipe(Effect.orDieWith(() => "Failed to get staged diff. Is git installed?"));

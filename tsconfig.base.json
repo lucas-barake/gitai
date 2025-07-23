@@ -31,6 +31,9 @@
     "noUncheckedIndexedAccess": false,
     "strictNullChecks": true,
     "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
     "target": "ES2022",
     "module": "NodeNext",
     "incremental": true,

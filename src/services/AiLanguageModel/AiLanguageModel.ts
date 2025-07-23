@@ -6,7 +6,7 @@ import {
   HttpClientResponse,
 } from "@effect/platform";
 import { Config, Effect, Redacted, Schedule, Schema } from "effect";
-import { makeOpenApiSchema } from "./internal/make-open-api-schema.js";
+import { makeOpenApiSchema } from "./make-open-api-schema.js";
 
 const makeSchemaFromResponse = <A, I>(schema: Schema.Schema<A, I>) =>
   Schema.Struct({
@@ -26,7 +26,13 @@ const makeSchemaFromResponse = <A, I>(schema: Schema.Schema<A, I>) =>
     ),
   });
 
+export const AiModel = Schema.Literal("gemini-2.5-pro", "gemini-2.5-flash").annotations({
+  description: "The model to use for AI generation",
+});
+export type AiModel = typeof AiModel.Type;
+
 export interface GenerateObjectOptions<A, I extends Record<string, unknown>> {
+  readonly model: AiModel;
   readonly prompt: string;
   readonly schema: Schema.Schema<A, I>;
 }
@@ -51,7 +57,7 @@ export class AiLanguageModel extends Effect.Service<AiLanguageModel>()("AiLangua
       <A, I extends Record<string, unknown>>(options: GenerateObjectOptions<A, I>) =>
         httpClient
           .post(
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent",
+            `https://generativelanguage.googleapis.com/v1beta/models/${options.model}:generateContent`,
             {
               body: HttpBody.unsafeJson({
                 contents: [{ parts: [{ text: options.prompt }] }],

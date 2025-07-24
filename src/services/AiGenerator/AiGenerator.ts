@@ -16,7 +16,7 @@ const orDie =
 
 export const REVIEW_COMMENT_TAG = "<!-- [gitai-review](https://github.com/lucas-barake/gitai) -->";
 
-export class AiGenerator extends Effect.Service<AiGenerator>()("AiGenerator", {
+export class AiGenerator extends Effect.Service<AiGenerator>()("@gitai/AiGenerator", {
   dependencies: [AiLanguageModel.Default],
   effect: Effect.gen(function* () {
     const ai = yield* AiLanguageModel;

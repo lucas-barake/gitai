@@ -1,6 +1,7 @@
 import { Command, CommandExecutor } from "@effect/platform";
 import { Effect, Schema } from "effect";
 import { constant } from "effect/Function";
+import { BunContext } from "@effect/platform-bun";
 
 const PrComment = Schema.Struct({
   id: Schema.String,
@@ -9,7 +10,8 @@ const PrComment = Schema.Struct({
 
 const PrCommentArray = Schema.Array(PrComment);
 
-export class GitHubClient extends Effect.Service<GitHubClient>()("GitHubClient", {
+export class GitHubClient extends Effect.Service<GitHubClient>()("@gitai/GitHubClient", {
+  dependencies: [BunContext.layer],
   effect: Effect.gen(function* () {
     const executor = yield* CommandExecutor.CommandExecutor;
 

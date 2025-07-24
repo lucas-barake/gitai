@@ -37,7 +37,7 @@ export interface GenerateObjectOptions<A, I extends Record<string, unknown>> {
   readonly schema: Schema.Schema<A, I>;
 }
 
-export class AiLanguageModel extends Effect.Service<AiLanguageModel>()("AiLanguageModel", {
+export class AiLanguageModel extends Effect.Service<AiLanguageModel>()("@gitai/AiLanguageModel", {
   dependencies: [FetchHttpClient.layer],
   effect: Effect.gen(function* () {
     const apiKey = yield* Config.redacted("GOOGLE_AI_API_KEY");

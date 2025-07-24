@@ -16,11 +16,9 @@ export const RulesCommand = Command.make(
     const fs = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
 
-    const gitaiDir = ".gitai";
-    const rulesDir = path.join(gitaiDir, "rules");
-
-    yield* Effect.logDebug("Ensuring .gitai/rules/ directory exists...");
-    yield* fs.makeDirectory(gitaiDir, { recursive: true }).pipe(Effect.ignore);
+    const rulesDir = ".gitai/rules";
+    yield* Effect.logDebug(`Ensuring ${rulesDir} directory exists...`);
+    yield* fs.makeDirectory(rulesDir, { recursive: true }).pipe(Effect.ignore);
 
     const rulesFiles = yield* fs.readDirectory(rulesDir).pipe(
       Effect.map(Array.filter((filename) => filename.endsWith(".md"))),
@@ -42,16 +40,11 @@ export const RulesCommand = Command.make(
       value: filename,
     }));
 
-    const selectedFile = yield* Option.match(opts.pathOption, {
-      onNone: () =>
-        Prompt.select({
-          message: "Which rule file would you like to use?",
-          choices,
-        }),
-      onSome: (path) => Effect.succeed(path),
+    const selectedFile = yield* Prompt.select({
+      message: "Which rule file would you like to use?",
+      choices,
     });
-
-    yield* Effect.log(`Selected rule file: ${selectedFile}`);
+    yield* Effect.logDebug(`Selected rule file: ${selectedFile}`);
 
     // precedence: CLI option > local config > prompt user
     const targetFile = yield* Option.match(opts.pathOption, {

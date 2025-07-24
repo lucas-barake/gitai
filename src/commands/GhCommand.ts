@@ -17,9 +17,6 @@ export const GhCommand = Command.make(
       onSome: (repo) => Effect.succeed(repo),
     });
     yield* Effect.log(`Using repository: ${nameWithOwner}`);
-    yield* Effect.annotateLogsScoped({
-      repository: nameWithOwner,
-    });
 
     const prNumber = yield* Prompt.text({
       message: "Please enter the PR number:",

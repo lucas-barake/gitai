@@ -37,39 +37,62 @@ const cliLoggerTty = (options: { readonly colors: boolean }) => {
   const color = options.colors ? withColor : withColorNoop;
   return Logger.make<unknown, void>(({ annotations, cause, logLevel, message: message_ }) => {
     const log = console.log;
-
     const message = Array.ensure(message_);
 
-    const logLevelLabel = color(logLevel.label.padEnd(5), ...logLevelColors[logLevel._tag]);
-    let firstLine = `${logLevelLabel}:`;
+    if (logLevel._tag === "Info" || logLevel._tag === "Debug" || logLevel._tag === "Trace") {
+      if (message.length > 0) {
+        const firstMaybeString = Inspectable.toStringUnknown(message[0]);
+        if (typeof firstMaybeString === "string") {
+          log(firstMaybeString);
+        }
+      }
+
+      if (logLevel._tag === "Debug" || logLevel._tag === "Trace") {
+        if (message.length > 1) {
+          console.group();
+          for (let i = 1; i < message.length; i++) {
+            log(Inspectable.redact(message[i]));
+          }
+          console.groupEnd();
+        }
+      }
+      return;
+    }
+
+    const badge = color(logLevel.label.toUpperCase(), ...logLevelColors[logLevel._tag]);
+    let firstLine = `${badge}`;
     let messageIndex = 0;
+
     if (message.length > 0) {
       const firstMaybeString = Inspectable.toStringUnknown(message[0]);
       if (typeof firstMaybeString === "string") {
-        firstLine += ` ${color(firstMaybeString, colors.bold, colors.cyan)}`;
+        firstLine += ` ${firstMaybeString}`;
         messageIndex++;
       }
     }
 
     log(firstLine);
-    console.group();
 
-    if (!Cause.isEmpty(cause)) {
-      log(Cause.pretty(cause, { renderErrorCause: true }));
-    }
+    if (!Cause.isEmpty(cause) || messageIndex < message.length || HashMap.size(annotations) > 0) {
+      console.group();
 
-    if (messageIndex < message.length) {
-      for (; messageIndex < message.length; messageIndex++) {
-        log(Inspectable.redact(message[messageIndex]));
+      if (!Cause.isEmpty(cause)) {
+        log(Cause.pretty(cause, { renderErrorCause: true }));
       }
-    }
 
-    if (HashMap.size(annotations) > 0) {
-      for (const [key, value] of annotations) {
-        log(color(`${key}:`, colors.bold, colors.white), Inspectable.redact(value));
+      if (messageIndex < message.length) {
+        for (; messageIndex < message.length; messageIndex++) {
+          log(Inspectable.redact(message[messageIndex]));
+        }
       }
+
+      if (HashMap.size(annotations) > 0) {
+        for (const [key, value] of annotations) {
+          log(color(`${key}:`, colors.bold, colors.white), Inspectable.redact(value));
+        }
+      }
+      console.groupEnd();
     }
-    console.groupEnd();
   });
 };
 

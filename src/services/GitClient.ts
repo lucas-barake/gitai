@@ -1,8 +1,10 @@
 import { Command, CommandExecutor } from "@effect/platform";
 import { Effect, Option } from "effect";
 import { OptionsContext } from "@/Options.js";
+import { BunContext } from "@effect/platform-bun";
 
-export class GitClient extends Effect.Service<GitClient>()("GitClient", {
+export class GitClient extends Effect.Service<GitClient>()("@gitai/GitClient", {
+  dependencies: [BunContext.layer],
   effect: Effect.gen(function* () {
     const executor = yield* CommandExecutor.CommandExecutor;
 

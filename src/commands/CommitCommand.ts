@@ -17,10 +17,8 @@ export const CommitCommand = Command.make(
       return;
     }
 
-    yield* Effect.log("Generating commit message...");
     const message = yield* ai.generateCommitMessage(diff);
-    yield* Effect.log(`Generated commit message:\n\n${message}\n`);
-
+    yield* Effect.log(message);
     const confirm = yield* Prompt.confirm({
       message: "Would you like to commit with this message?",
     });

@@ -16,3 +16,4 @@ scratchpad/*
 .env.test.local
 .env.production.local
 gitai
+.gitai/*

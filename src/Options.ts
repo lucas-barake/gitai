@@ -1,6 +1,7 @@
 import { Options } from "@effect/cli";
-import { Context, Effect, Option, Schema } from "effect";
+import { Context, Effect, Option } from "effect";
 import type { AiModel } from "./services/AiLanguageModel/AiLanguageModel.js";
+import { DefaultAiModel, LocalConfig } from "./services/LocalConfig.js";
 
 export const repoOption = Options.text("repo").pipe(
   Options.optional,
@@ -16,17 +17,11 @@ export const contextOption = Options.text("context").pipe(
 );
 
 export const modelOption = Options.text("model").pipe(
-  Options.withSchema(Schema.Literal("fast", "accurate")),
+  Options.withSchema(DefaultAiModel),
   Options.optional,
   Options.withAlias("m"),
   Options.withDescription(
     "Select AI model: 'fast' (default, gemini-2.5-flash) or 'accurate' (gemini-2.5-pro)",
-  ),
-  Options.map((value) =>
-    value.pipe(
-      Option.map((value): AiModel => (value === "fast" ? "gemini-2.5-flash" : "gemini-2.5-pro")),
-      Option.getOrElse(() => "gemini-2.5-flash" as const satisfies AiModel),
-    ),
   ),
 );
 
@@ -45,11 +40,11 @@ export class OptionsContext extends Context.Tag("cli/OptionsContext")<
   {
     readonly repo: FromOptions<typeof repoOption>;
     readonly context: FromOptions<typeof contextOption>;
-    readonly model: FromOptions<typeof modelOption>;
+    readonly model: AiModel;
     readonly contextLines: FromOptions<typeof contextLinesOption>;
   }
 >() {
-  static readonly provide = <A, E, R>(
+  static readonly provide = Effect.fnUntraced(function* <A, E, R>(
     self: Effect.Effect<A, E, R>,
     opts: Partial<{
       readonly repoOption: FromOptions<typeof repoOption>;
@@ -58,14 +53,23 @@ export class OptionsContext extends Context.Tag("cli/OptionsContext")<
       readonly contextOption: FromOptions<typeof contextOption>;
       readonly modelOption: FromOptions<typeof modelOption>;
     },
-  ) =>
-    self.pipe(
-      Effect.provideService(this, {
+  ) {
+    const localConfig = yield* LocalConfig;
+
+    // precedence: user option > local config > fallback to fast
+    const model: AiModel = opts.modelOption.pipe(
+      Option.orElse(() => localConfig.config.defaultModel),
+      Option.getOrElse((): AiModel => "gemini-2.5-flash"),
+    );
+
+    return yield* self.pipe(
+      Effect.provideService(OptionsContext, {
         repo: opts.repoOption ?? Option.none(),
         contextLines: opts.contextLinesOption ?? Option.none<number>(),
         context: opts.contextOption,
-        model: opts.modelOption,
+        model,
       }),
-      (self) => Effect.zipRight(Effect.log(`Using model: ${opts.modelOption}`), self),
+      (self) => Effect.zipRight(Effect.log(`Using model: ${model}`), self),
     );
+  });
 }

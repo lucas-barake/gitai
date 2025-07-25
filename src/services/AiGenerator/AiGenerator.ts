@@ -16,7 +16,7 @@ const orDie =
 
 export const REVIEW_COMMENT_TAG = "<!-- [gitai-review](https://github.com/lucas-barake/gitai) -->";
 
-export class AiGenerator extends Effect.Service<AiGenerator>()("AiGenerator", {
+export class AiGenerator extends Effect.Service<AiGenerator>()("@gitai/AiGenerator", {
   dependencies: [AiLanguageModel.Default],
   effect: Effect.gen(function* () {
     const ai = yield* AiLanguageModel;
@@ -79,6 +79,7 @@ ${fileSummaries}
           model: opts.model,
           prompt: makePrDetailsPrompt(filteredDiff, opts.context),
           schema: PrDetails,
+          label: "PR details",
         })
         .pipe(
           Effect.map((details) => ({
@@ -100,6 +101,7 @@ ${fileSummaries}
           model: opts.model,
           prompt: makeCommitMessagePrompt(filteredDiff, opts.context),
           schema: CommitMessage,
+          label: "commit message",
         })
         .pipe(
           Effect.map((generated) => generated.message),
@@ -116,6 +118,7 @@ ${fileSummaries}
           model: opts.model,
           prompt: makeTitlePrompt(filteredDiff, opts.context),
           schema: PrTitle,
+          label: "PR title",
         })
         .pipe(
           Effect.map((generated) => generated.title),
@@ -132,6 +135,7 @@ ${fileSummaries}
           model: opts.model,
           prompt: makeReviewPrompt(filteredDiff, opts.context),
           schema: PrReviewDetails,
+          label: "PR review",
         })
         .pipe(Effect.map(formatReviewAsMarkdown), orDie("Failed to generate review"));
     });

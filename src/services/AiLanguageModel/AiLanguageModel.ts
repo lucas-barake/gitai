@@ -1,6 +1,7 @@
 import { FetchHttpClient, HttpBody, HttpClient, HttpClientRequest } from "@effect/platform";
 import { Config, Effect, Redacted, Schedule, Schema, Stream } from "effect";
 import { makeOpenApiSchema } from "./make-open-api-schema.js";
+import { Stdout } from "../Stdout.js";
 
 class StreamChunk extends Schema.Class<StreamChunk>("StreamChunk")({
   candidates: Schema.optional(
@@ -32,9 +33,10 @@ export interface GenerateObjectOptions<A, I extends Record<string, unknown>> {
 }
 
 export class AiLanguageModel extends Effect.Service<AiLanguageModel>()("@gitai/AiLanguageModel", {
-  dependencies: [FetchHttpClient.layer],
+  dependencies: [FetchHttpClient.layer, Stdout.Default],
   effect: Effect.gen(function* () {
     const apiKey = yield* Config.redacted("GOOGLE_AI_API_KEY");
+    const stdout = yield* Stdout;
 
     const httpClient = (yield* HttpClient.HttpClient).pipe(
       HttpClient.mapRequest((request) =>
@@ -62,13 +64,7 @@ export class AiLanguageModel extends Effect.Service<AiLanguageModel>()("@gitai/A
             },
           )
           .pipe(
-            (self) =>
-              Effect.zipRight(
-                Effect.sync(() => {
-                  process.stdout.write(`→ Pondering ${options.label}...`);
-                }),
-                self,
-              ),
+            (self) => Effect.zipRight(stdout.write(`→ Pondering ${options.label}...`), self),
             Effect.flatMap((response) =>
               response.stream.pipe(
                 Stream.decodeText("utf-8"),
@@ -77,17 +73,15 @@ export class AiLanguageModel extends Effect.Service<AiLanguageModel>()("@gitai/A
                 Stream.map((line) => line.slice(5)),
                 Stream.mapEffect(Schema.decode(Schema.parseJson(StreamChunk))),
                 Stream.orDieWith((error) => `Failed to decode stream chunk: ${error.message}`),
-                Stream.runFold(
+                Stream.runFoldEffect(
                   { totalText: "", lastTokenCount: 0, firstChunk: true },
-                  (acc, chunk) => {
+                  Effect.fnUntraced(function* (acc, chunk) {
                     const newText = chunk.candidates?.[0]?.content.parts[0].text ?? "";
                     const updatedText = acc.totalText + newText;
                     const tokenCount = chunk.usageMetadata.totalTokenCount ?? acc.lastTokenCount;
 
-                    if (acc.firstChunk) {
-                      process.stdout.write("\r" + " ".repeat(60) + "\r");
-                    }
-                    process.stdout.write(
+                    if (acc.firstChunk) yield* stdout.clearLine;
+                    yield* stdout.write(
                       `\r→ Generating ${options.label}... ${tokenCount} total tokens`,
                     );
 
@@ -96,13 +90,16 @@ export class AiLanguageModel extends Effect.Service<AiLanguageModel>()("@gitai/A
                       lastTokenCount: tokenCount,
                       firstChunk: false,
                     };
-                  },
+                  }),
                 ),
                 Effect.tap(({ lastTokenCount }) =>
-                  Effect.sync(() => {
-                    process.stdout.write("\r" + " ".repeat(60) + "\r");
-                    console.log(`✓ Generated ${options.label} (${lastTokenCount} total tokens)\n`);
-                  }),
+                  stdout.clearLine.pipe(
+                    Effect.zipRight(
+                      stdout.write(
+                        `✓ Generated ${options.label} (${lastTokenCount} total tokens)\n`,
+                      ),
+                    ),
+                  ),
                 ),
                 Effect.map(({ totalText }) => totalText),
                 Effect.flatMap(Schema.decode(Schema.parseJson(options.schema))),

@@ -97,7 +97,7 @@ export const GhCommand = Command.make("gh", { repoOption, contextOption, modelOp
       }
     }
   }).pipe(
-    provideCliOption("repo", opts.repoOption ?? Option.none()),
+    provideCliOption("repo", opts.repoOption),
     provideCliOption("context", opts.contextOption),
     provideModel(opts.modelOption),
   ),

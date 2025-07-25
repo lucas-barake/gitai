@@ -1,5 +1,5 @@
 import { Command, Prompt } from "@effect/cli";
-import { Effect, Option, String } from "effect";
+import { Effect, String } from "effect";
 import { AiGenerator } from "@/services/AiGenerator/AiGenerator.js";
 import { GitClient } from "@/services/GitClient.js";
 import {
@@ -35,7 +35,7 @@ export const CommitCommand = Command.make(
         yield* Effect.log("✅ Successfully committed changes!");
       }
     }).pipe(
-      provideCliOption("contextLines", opts.contextLinesOption ?? Option.none()),
+      provideCliOption("contextLines", opts.contextLinesOption),
       provideCliOption("context", opts.contextOption),
       provideModel(opts.modelOption),
     ),

@@ -79,6 +79,7 @@ ${fileSummaries}
           model: opts.model,
           prompt: makePrDetailsPrompt(filteredDiff, opts.context),
           schema: PrDetails,
+          label: "PR details",
         })
         .pipe(
           Effect.map((details) => ({
@@ -100,6 +101,7 @@ ${fileSummaries}
           model: opts.model,
           prompt: makeCommitMessagePrompt(filteredDiff, opts.context),
           schema: CommitMessage,
+          label: "commit message",
         })
         .pipe(
           Effect.map((generated) => generated.message),
@@ -116,6 +118,7 @@ ${fileSummaries}
           model: opts.model,
           prompt: makeTitlePrompt(filteredDiff, opts.context),
           schema: PrTitle,
+          label: "PR title",
         })
         .pipe(
           Effect.map((generated) => generated.title),
@@ -132,6 +135,7 @@ ${fileSummaries}
           model: opts.model,
           prompt: makeReviewPrompt(filteredDiff, opts.context),
           schema: PrReviewDetails,
+          label: "PR review",
         })
         .pipe(Effect.map(formatReviewAsMarkdown), orDie("Failed to generate review"));
     });

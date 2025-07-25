@@ -2,16 +2,22 @@ import { Command, Prompt } from "@effect/cli";
 import { Effect, Option, String } from "effect";
 import { AiGenerator, REVIEW_COMMENT_TAG } from "@/services/AiGenerator/AiGenerator.js";
 import { GitHubClient } from "@/services/GitHubClient.js";
-import { OptionsContext, repoOption, contextOption, modelOption } from "@/Options.js";
+import {
+  CliOption,
+  repoOption,
+  contextOption,
+  modelOption,
+  provideCliOption,
+  provideModel,
+} from "@/services/CliOptions.js";
 
-export const GhCommand = Command.make(
-  "gh",
-  { repoOption, contextOption, modelOption },
-  Effect.fn(function* (opts) {
+export const GhCommand = Command.make("gh", { repoOption, contextOption, modelOption }, (opts) =>
+  Effect.gen(function* () {
     const ai = yield* AiGenerator;
     const github = yield* GitHubClient;
+    const repo = yield* CliOption("repo");
 
-    const nameWithOwner = yield* Option.match(opts.repoOption, {
+    const nameWithOwner = yield* Option.match(repo, {
       onNone: () =>
         Effect.log("Detecting current repository...").pipe(Effect.zipRight(github.getLocalRepo())),
       onSome: (repo) => Effect.succeed(repo),
@@ -90,5 +96,9 @@ export const GhCommand = Command.make(
         break;
       }
     }
-  }, OptionsContext.provide),
+  }).pipe(
+    provideCliOption("repo", opts.repoOption ?? Option.none()),
+    provideCliOption("context", opts.contextOption),
+    provideModel(opts.modelOption),
+  ),
 );

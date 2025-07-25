@@ -7,7 +7,7 @@ import {
   makeReviewPrompt,
   makeTitlePrompt,
 } from "./prompts.js";
-import { OptionsContext } from "@/Options.js";
+import { CliOption } from "@/services/CliOptions.js";
 
 const orDie =
   (message: string) =>
@@ -71,13 +71,14 @@ ${fileSummaries}
     );
 
     const generatePrDetails = Effect.fn("AiGenerator.generatePrDetails")(function* (diff: string) {
-      const opts = yield* OptionsContext;
+      const model = yield* CliOption("model");
+      const context = yield* CliOption("context");
       const filteredDiff = yield* filterDiff(diff);
 
       return yield* ai
         .generateObject({
-          model: opts.model,
-          prompt: makePrDetailsPrompt(filteredDiff, opts.context),
+          model,
+          prompt: makePrDetailsPrompt(filteredDiff, context),
           schema: PrDetails,
           label: "PR details",
         })
@@ -93,13 +94,14 @@ ${fileSummaries}
     const generateCommitMessage = Effect.fn("AiGenerator.generateCommitMessage")(function* (
       diff: string,
     ) {
-      const opts = yield* OptionsContext;
+      const model = yield* CliOption("model");
+      const context = yield* CliOption("context");
       const filteredDiff = yield* filterDiff(diff);
 
       return yield* ai
         .generateObject({
-          model: opts.model,
-          prompt: makeCommitMessagePrompt(filteredDiff, opts.context),
+          model,
+          prompt: makeCommitMessagePrompt(filteredDiff, context),
           schema: CommitMessage,
           label: "commit message",
         })
@@ -110,13 +112,14 @@ ${fileSummaries}
     });
 
     const generateTitle = Effect.fn("AiGenerator.generateTitle")(function* (diff: string) {
-      const opts = yield* OptionsContext;
+      const model = yield* CliOption("model");
+      const context = yield* CliOption("context");
       const filteredDiff = yield* filterDiff(diff);
 
       return yield* ai
         .generateObject({
-          model: opts.model,
-          prompt: makeTitlePrompt(filteredDiff, opts.context),
+          model,
+          prompt: makeTitlePrompt(filteredDiff, context),
           schema: PrTitle,
           label: "PR title",
         })
@@ -127,13 +130,14 @@ ${fileSummaries}
     });
 
     const generateReview = Effect.fn("AiGenerator.generateReview")(function* (diff: string) {
-      const opts = yield* OptionsContext;
+      const model = yield* CliOption("model");
+      const context = yield* CliOption("context");
       const filteredDiff = yield* filterDiff(diff);
 
       return yield* ai
         .generateObject({
-          model: opts.model,
-          prompt: makeReviewPrompt(filteredDiff, opts.context),
+          model,
+          prompt: makeReviewPrompt(filteredDiff, context),
           schema: PrReviewDetails,
           label: "PR review",
         })

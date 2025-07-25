@@ -1,6 +1,6 @@
 import { Command, CommandExecutor } from "@effect/platform";
 import { Effect, Option } from "effect";
-import { OptionsContext } from "@/Options.js";
+import { CliOption } from "@/services/CliOptions.js";
 import { BunContext } from "@effect/platform-bun";
 
 export class GitClient extends Effect.Service<GitClient>()("@gitai/GitClient", {
@@ -8,11 +8,11 @@ export class GitClient extends Effect.Service<GitClient>()("@gitai/GitClient", {
   effect: Effect.gen(function* () {
     const executor = yield* CommandExecutor.CommandExecutor;
 
-    const getStagedDiff = Effect.fn("getStagedDiff")(function* () {
-      const opts = yield* OptionsContext;
+    const getStagedDiff = Effect.gen(function* () {
+      const contextLines = yield* CliOption("contextLines");
       const getDiffCommand = Command.make(
         "git",
-        ...["diff", "--staged", `-U${Option.getOrElse(opts.contextLines, () => 3)}`],
+        ...["diff", "--staged", `-U${Option.getOrElse(contextLines, () => 3)}`],
       );
       const diff = yield* executor
         .string(getDiffCommand)

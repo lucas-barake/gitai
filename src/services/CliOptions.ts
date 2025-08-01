@@ -51,7 +51,6 @@ export interface CliOption<Tag extends string> {
 }
 
 interface OptionValueMap {
-  readonly repo: FromOptions<typeof repoOption>;
   readonly context: FromOptions<typeof contextOption>;
   readonly model: AiModel;
   readonly contextLines: FromOptions<typeof contextLinesOption>;

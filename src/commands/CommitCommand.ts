@@ -1,7 +1,4 @@
-import { Command, Prompt } from "@effect/cli";
-import { Effect, String } from "effect";
 import { AiGenerator } from "@/services/AiGenerator/AiGenerator.js";
-import { GitClient } from "@/services/GitClient.js";
 import {
   contextLinesOption,
   contextOption,
@@ -9,6 +6,9 @@ import {
   provideCliOption,
   provideModel,
 } from "@/services/CliOptions.js";
+import { GitClient } from "@/services/GitClient.js";
+import { Command, Prompt } from "@effect/cli";
+import { Effect, String } from "effect";
 
 export const CommitCommand = Command.make(
   "commit",

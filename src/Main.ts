@@ -10,10 +10,11 @@ import { GitHubClient } from "./services/GitHubClient.js";
 import { CommitCommand } from "./commands/CommitCommand.js";
 import { GhCommand } from "./commands/GhCommand.js";
 import { RulesCommand } from "./commands/RulesCommand.js";
+import { ChangelogCommand } from "./commands/ChangelogCommand.js";
 import { LocalConfig } from "./services/LocalConfig.js";
 
 const MainCommand = Command.make("gitai").pipe(
-  Command.withSubcommands([GhCommand, CommitCommand, RulesCommand]),
+  Command.withSubcommands([GhCommand, CommitCommand, RulesCommand, ChangelogCommand]),
 );
 
 const cli = Command.run(MainCommand, {

@@ -1,20 +1,22 @@
-import { Command, Prompt } from "@effect/cli";
-import { Effect, Option, String } from "effect";
-import { AiGenerator, REVIEW_COMMENT_TAG } from "@/services/AiGenerator/AiGenerator.js";
-import { GitHubClient } from "@/services/GitHubClient.js";
+import { AiGenerator, makeReviewCommentTag } from "@/services/AiGenerator/AiGenerator.js";
 import {
   CliOption,
-  repoOption,
   contextOption,
   modelOption,
   provideCliOption,
   provideModel,
+  repoOption,
 } from "@/services/CliOptions.js";
+import { GitHubClient } from "@/services/GitHubClient.js";
+import { LocalConfig } from "@/services/LocalConfig.js";
+import { Command, Prompt } from "@effect/cli";
+import { Effect, Option, String } from "effect";
 
 export const GhCommand = Command.make("gh", { repoOption, contextOption, modelOption }, (opts) =>
   Effect.gen(function* () {
     const ai = yield* AiGenerator;
     const github = yield* GitHubClient;
+    const localConfig = yield* LocalConfig;
     const repo = yield* CliOption("repo");
 
     const nameWithOwner = yield* Option.match(repo, {
@@ -67,7 +69,7 @@ export const GhCommand = Command.make("gh", { repoOption, contextOption, modelOp
         const comments = yield* github.listPrComments(prNumber, nameWithOwner);
 
         const previousComment = comments.find((comment) =>
-          comment.body.includes(REVIEW_COMMENT_TAG),
+          comment.body.includes(makeReviewCommentTag(localConfig.username)),
         );
         yield* Effect.logDebug(`Found ${comments.length} comments for PR #${prNumber}`);
 

@@ -51,3 +51,11 @@ export class PrTitle extends Schema.Class<PrTitle>("PrTitle")(
     }),
   }),
 ) {}
+
+export class ChangelogResponse extends Schema.Class<ChangelogResponse>("ChangelogResponse")(
+  Schema.Struct({
+    changelog: Schema.String.annotations({
+      description: "The generated changelog in markdown format",
+    }),
+  }),
+) {}

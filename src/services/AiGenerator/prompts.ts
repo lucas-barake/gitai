@@ -1,4 +1,5 @@
 import { Option } from "effect";
+import type { GitCommit } from "@/services/GitClient.js";
 
 const makeContextSnippet = (context: Option.Option<string>) =>
   context.pipe(
@@ -186,3 +187,75 @@ Your feedback must be focused on the following areas:
 
 ## [Begin Task]
 Analyze the following git diff and generate the review in the specified JSON format:\n${diff}`;
+
+// ----------------------
+// Changelog Generation
+// ----------------------
+
+const formatCommitsForPrompt = (commits: readonly GitCommit[]) => {
+  return commits.map(commit => {
+    const body = commit.body ? `\n\n${commit.body}` : '';
+    return `**Commit ${commit.shortHash}** (${commit.date})
+Author: ${commit.author}
+Subject: ${commit.subject}${body}
+
+---`;
+  }).join('\n\n');
+};
+
+export const makeChangelogPrompt = (commits: readonly GitCommit[], context: Option.Option<string>) =>
+  `You are an expert technical writer specializing in creating professional software changelogs. Your task is to analyze the provided git commits and generate a comprehensive, well-structured changelog in markdown format.
+
+${makeContextSnippet(context)}
+
+## Changelog Requirements
+
+### Structure
+- Use clean markdown section headers for categories (## Features, ## Bug Fixes, etc.)
+- Each change should be a single bullet point with nested sub-bullets for details
+- Keep entries concise and focused - avoid paragraph-style descriptions
+- Use nested bullet structure: main change → technical details → user impact (if significant)
+
+### Categorization Guidelines
+- **Features**: New functionality, capabilities, or user-facing additions
+- **Bug Fixes**: Corrections to existing functionality
+- **Improvements**: Enhancements to existing features or performance
+- **Refactoring**: Code structure changes without functional impact  
+- **Documentation**: Changes to docs, comments, or README files
+- **Build/CI**: Changes to build system, dependencies, or CI/CD
+- **Testing**: Test additions, modifications, or improvements
+- **Security**: Security-related changes or vulnerability fixes
+- **Breaking Changes**: Changes that break backward compatibility
+
+### Content Guidelines
+- Write in clear, professional language using concise bullet points
+- Be specific about what changed and its impact
+- Focus on user-facing changes and developer-relevant improvements
+- Avoid redundant or trivial entries unless they have meaningful impact
+- STRICTLY FORBIDDEN: Do not use emojis, emoji symbols, or decorative characters in headers or content
+- Use proper markdown nested bullets with indentation (- for level 1, then 2 spaces + - for level 2, then 4 spaces + - for level 3, etc.)
+- For significant changes, add user impact as a nested bullet point, not a separate subsection
+
+### Technical Detail Level
+- Include enough detail for developers to understand the scope of changes
+- Mention relevant file paths, function names, or APIs when helpful
+- Explain the "why" behind significant changes when it can be inferred
+- Group related commits that work together toward a single goal
+
+## Commit History to Analyze
+
+${formatCommitsForPrompt(commits)}
+
+## Output Requirements
+
+Generate a professional changelog in markdown format that:
+1. Uses clean section headers WITHOUT any emojis or decorative symbols (e.g., "## Features", "## Bug Fixes")
+2. Each change is a single bullet point with nested sub-bullets for technical details
+3. Maintains concise, professional descriptions - avoid verbose paragraph-style text
+4. Groups commits into logical categories
+5. Uses nested bullet structure for hierarchy (-, --, ---)
+6. Omits trivial changes unless they have meaningful impact
+
+CRITICAL: Your output must be completely free of emojis, emoji symbols, or decorative characters. Keep it concise with bullet points only.
+
+Begin your changelog generation now:`;

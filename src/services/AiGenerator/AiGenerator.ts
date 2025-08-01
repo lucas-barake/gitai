@@ -7,6 +7,7 @@ import {
   makeChangelogPrompt,
   makeCommitMessagePrompt,
   makePrDetailsPrompt,
+  makePrLineReviewPrompt,
   makeReviewPrompt,
   makeTitlePrompt,
 } from "./prompts.js";
@@ -161,7 +162,9 @@ ${fileSummaries}
         );
     });
 
-    const generateReview = Effect.fn("AiGenerator.generateReview")(function* (diff: string) {
+    const generateReviewComment = Effect.fn("AiGenerator.generateReviewComment")(function* (
+      diff: string,
+    ) {
       const model = yield* CliOption("model");
       const context = yield* CliOption("context");
       const filteredDiff = yield* filterDiff(diff);
@@ -171,9 +174,9 @@ ${fileSummaries}
           model,
           prompt: makeReviewPrompt(filteredDiff, context),
           schema: PrReviewDetails,
-          label: "PR review",
+          label: "PR review comment",
         })
-        .pipe(Effect.map(formatReviewAsMarkdown), orDie("Failed to generate review"));
+        .pipe(Effect.map(formatReviewAsMarkdown), orDie("Failed to generate review comment"));
     });
 
     const generateChangelog = Effect.fn("AiGenerator.generateChangelog")(function* (
@@ -192,12 +195,30 @@ ${fileSummaries}
         .pipe(orDie("Failed to generate changelog"));
     });
 
+    const generatePrLineReview = Effect.fn("AiGenerator.generatePrLineReview")(function* (
+      diff: string,
+    ) {
+      const model = yield* CliOption("model");
+      const context = yield* CliOption("context");
+      const filteredDiff = yield* filterDiff(diff);
+
+      return yield* ai
+        .generateObject({
+          model,
+          prompt: makePrLineReviewPrompt(filteredDiff, context),
+          schema: PrReviewDetails,
+          label: "PR line review",
+        })
+        .pipe(orDie("Failed to generate PR line review"));
+    });
+
     return {
       generatePrDetails,
       generateCommitMessage,
       generateTitle,
-      generateReview,
+      generateReviewComment,
       generateChangelog,
+      generatePrLineReview,
     } as const;
   }),
 }) {}

@@ -1,17 +1,17 @@
+import { assert, describe, it } from "@effect/vitest";
 import { Effect, Option } from "effect";
-import { describe, it, assert } from "@effect/vitest";
 import { CliOption, provideCliOption, provideCliOptionEffect } from "../src/services/CliOptions.js";
 
 describe("CliOptions", () => {
   it.effect(
-    "should retrieve repo option value",
+    "should retrieve option value",
     Effect.fnUntraced(
       function* () {
-        const testValue = Option.some("owner/repo");
-        const result = yield* CliOption("repo");
+        const testValue = Option.some("test");
+        const result = yield* CliOption("context");
         assert.deepStrictEqual(result, testValue);
       },
-      provideCliOption("repo", Option.some("owner/repo")),
+      provideCliOption("context", Option.some("test")),
     ),
   );
 
@@ -19,12 +19,11 @@ describe("CliOptions", () => {
     "should not override option value",
     Effect.fnUntraced(
       function* () {
-        const testValue = Option.some("owner/repo");
-        const result = yield* CliOption("repo");
-        assert.deepStrictEqual(result, testValue);
+        const result = yield* CliOption("contextLines");
+        assert.deepStrictEqual(result, Option.some(2));
       },
-      provideCliOption("repo", Option.some("owner/repo")),
-      provideCliOption("context", Option.some("context")),
+      provideCliOption("contextLines", Option.some(2)),
+      provideCliOption("context", Option.some("test")),
     ),
   );
 

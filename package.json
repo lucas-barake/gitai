@@ -24,7 +24,8 @@
     "coverage": "vitest --coverage",
     "gitai": "bun run src/Main.ts",
     "format": "prettier --write \"**/*.{ts,mjs,json,md}\"",
-    "build": "bun build src/Main.ts --compile --outfile gitai"
+    "build": "bun build src/Main.ts --compile --outfile gitai",
+    "release": "bun scripts/release.ts"
   },
   "dependencies": {
     "@effect/ai": "latest",

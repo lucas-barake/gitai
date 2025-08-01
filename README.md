@@ -186,3 +186,24 @@ gitai gh --help
 ```bash
 gitai commit --help
 ```
+
+## Releases
+
+To create a new release:
+
+```bash
+npm run release
+```
+
+This script will:
+1. Check the latest git tag to determine the current version
+2. Prompt you to choose a version bump type (major, minor, or patch)
+3. Create and push a new git tag (e.g., `v1.0.0`)
+4. Trigger the GitHub Actions release workflow
+
+The release workflow will automatically:
+- Build the binary with `bun run build`
+- Create a GitHub release with the binary attached
+- Generate release notes from recent commits
+
+Users can then download the `gitai` binary directly from the GitHub releases page.

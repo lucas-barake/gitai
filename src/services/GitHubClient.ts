@@ -173,16 +173,14 @@ export class GitHubClient extends Effect.Service<GitHubClient>()("@gitai/GitHubC
         readonly line: number;
         readonly body: string;
       }>;
-      readonly reviewBody?: string;
+      readonly reviewBody: string;
     }) {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
 
-      const tempFile = path.join("/tmp", `gitai-review-${args.prNumber}-${Date.now()}.json`);
-
       const reviewData = {
-        body: args.reviewBody || "AI-generated code review",
-        event: "COMMENT" as const,
+        body: args.reviewBody,
+        event: "COMMENT",
         comments: args.comments.map((comment) => ({
           path: comment.path,
           line: comment.line,
@@ -190,10 +188,11 @@ export class GitHubClient extends Effect.Service<GitHubClient>()("@gitai/GitHubC
         })),
       };
 
+      const tempFile = path.join("/tmp", `gitai-review-${args.prNumber}-${Date.now()}.json`);
       yield* fs.writeFileString(tempFile, JSON.stringify(reviewData, null, 2));
       yield* Effect.addFinalizer(() => fs.remove(tempFile).pipe(Effect.ignore));
 
-      yield* Effect.log(`Debug: Review data being sent:`);
+      yield* Effect.log(`Review data being sent:`);
       yield* Effect.log(JSON.stringify(reviewData, null, 2));
 
       const apiCommand = Command.make(

@@ -5,5 +5,6 @@
   "trailingComma": "all",
   "arrowParens": "always",
   "printWidth": 100,
-  "tabWidth": 2
+  "tabWidth": 2,
+  "plugins": ["prettier-plugin-organize-imports"]
 }

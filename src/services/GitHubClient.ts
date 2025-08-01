@@ -1,7 +1,7 @@
-import { Command, CommandExecutor } from "@effect/platform";
+import { Command, CommandExecutor, FileSystem, Path } from "@effect/platform";
+import { BunContext } from "@effect/platform-bun";
 import { Effect, Schema } from "effect";
 import { constant } from "effect/Function";
-import { BunContext } from "@effect/platform-bun";
 
 const PrComment = Schema.Struct({
   id: Schema.String,
@@ -9,6 +9,28 @@ const PrComment = Schema.Struct({
 });
 
 const PrCommentArray = Schema.Array(PrComment);
+
+export const RepoWithOwner = Schema.TemplateLiteral(Schema.String, "/", Schema.String).pipe(
+  Schema.transform(
+    Schema.Struct({
+      string: Schema.TemplateLiteral(Schema.String, "/", Schema.String),
+      owner: Schema.String,
+      repo: Schema.String,
+    }),
+    {
+      decode: (a) => {
+        const [owner, repo] = a.split("/");
+        return {
+          string: a,
+          owner,
+          repo,
+        };
+      },
+      encode: (i) => i.string,
+    },
+  ),
+);
+export type RepoWithOwner = typeof RepoWithOwner.Type;
 
 export class GitHubClient extends Effect.Service<GitHubClient>()("@gitai/GitHubClient", {
   dependencies: [BunContext.layer],
@@ -23,7 +45,7 @@ export class GitHubClient extends Effect.Service<GitHubClient>()("@gitai/GitHubC
           () => new Error(),
         ),
         Effect.flatMap(
-          Schema.decode(Schema.parseJson(Schema.Struct({ nameWithOwner: Schema.String }))),
+          Schema.decode(Schema.parseJson(Schema.Struct({ nameWithOwner: RepoWithOwner }))),
         ),
         Effect.orDieWith(
           () => "Failed to detect repository. Are you inside a Git repository directory?",
@@ -34,9 +56,9 @@ export class GitHubClient extends Effect.Service<GitHubClient>()("@gitai/GitHubC
 
     const getPrDiff = Effect.fn("GitHubClient.getPrDiff")(function* (
       prNumber: string,
-      repo: string,
+      repo: RepoWithOwner,
     ) {
-      const getDiffCommand = Command.make("gh", "pr", "diff", prNumber, "-R", repo);
+      const getDiffCommand = Command.make("gh", "pr", "diff", prNumber, "-R", repo.string);
       const diff = yield* executor
         .string(getDiffCommand)
         .pipe(
@@ -49,11 +71,11 @@ export class GitHubClient extends Effect.Service<GitHubClient>()("@gitai/GitHubC
 
     const updatePr = Effect.fn("GitHubClient.updatePr")(function* (args: {
       readonly prNumber: string;
-      readonly repo: string;
+      readonly repo: RepoWithOwner;
       readonly title?: string;
       readonly body?: string;
     }) {
-      const commandArgs = ["pr", "edit", args.prNumber, "-R", args.repo];
+      const commandArgs = ["pr", "edit", args.prNumber, "-R", args.repo.string];
       if (args.title) {
         commandArgs.push("--title", args.title);
       }
@@ -73,7 +95,7 @@ export class GitHubClient extends Effect.Service<GitHubClient>()("@gitai/GitHubC
 
     const listPrComments = Effect.fn("GitHubClient.listPrComments")(function* (
       prNumber: string,
-      repo: string,
+      repo: RepoWithOwner,
     ) {
       const listCommentsCommand = Command.make(
         "gh",
@@ -81,7 +103,7 @@ export class GitHubClient extends Effect.Service<GitHubClient>()("@gitai/GitHubC
         "view",
         prNumber,
         "-R",
-        repo,
+        repo.string,
         "--json",
         "comments",
       );
@@ -100,7 +122,7 @@ export class GitHubClient extends Effect.Service<GitHubClient>()("@gitai/GitHubC
 
     const addPrComment = Effect.fn("GitHubClient.addPrComment")(function* (args: {
       readonly prNumber: string;
-      readonly repo: string;
+      readonly repo: RepoWithOwner;
       readonly body: string;
     }) {
       const addCommentCommand = Command.make(
@@ -109,7 +131,7 @@ export class GitHubClient extends Effect.Service<GitHubClient>()("@gitai/GitHubC
         "comment",
         args.prNumber,
         "-R",
-        args.repo,
+        args.repo.string,
         "--body",
         args.body,
       );
@@ -143,6 +165,99 @@ export class GitHubClient extends Effect.Service<GitHubClient>()("@gitai/GitHubC
       }
     });
 
+    const submitPrReview = Effect.fn("GitHubClient.submitPrReview")(function* (args: {
+      readonly prNumber: string;
+      readonly repo: RepoWithOwner;
+      readonly comments: ReadonlyArray<{
+        readonly path: string;
+        readonly line: number;
+        readonly body: string;
+      }>;
+      readonly reviewBody: string;
+    }) {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+
+      const reviewData = {
+        body: args.reviewBody,
+        event: "COMMENT",
+        comments: args.comments.map((comment) => ({
+          path: comment.path,
+          line: comment.line,
+          body: comment.body,
+        })),
+      };
+
+      const tempFile = path.join("/tmp", `gitai-review-${args.prNumber}-${Date.now()}.json`);
+      yield* fs.writeFileString(tempFile, JSON.stringify(reviewData, null, 2));
+      yield* Effect.addFinalizer(() => fs.remove(tempFile).pipe(Effect.ignore));
+
+      yield* Effect.log(`Review data being sent:`);
+      yield* Effect.log(JSON.stringify(reviewData, null, 2));
+
+      const apiCommand = Command.make(
+        "gh",
+        "api",
+        `repos/${args.repo.owner}/${args.repo.repo}/pulls/${args.prNumber}/reviews`,
+        "--method",
+        "POST",
+        "--input",
+        tempFile,
+      );
+
+      const exitCode = yield* executor.exitCode(apiCommand);
+
+      if (exitCode !== 0) {
+        return yield* Effect.dieMessage(
+          `Failed to submit PR review. Command exited with code ${exitCode}.`,
+        );
+      }
+
+      yield* Effect.log(`✅ PR review submitted successfully!`);
+    });
+
+    const listPrReviews = Effect.fn("GitHubClient.listPrReviews")(function* (
+      prNumber: string,
+      repo: RepoWithOwner,
+    ) {
+      const listReviewsCommand = Command.make(
+        "gh",
+        "pr",
+        "view",
+        prNumber,
+        "-R",
+        repo.string,
+        "--json",
+        "reviews",
+      );
+
+      return yield* executor.string(listReviewsCommand).pipe(
+        Effect.flatMap(
+          Schema.decode(
+            Schema.parseJson(
+              Schema.Struct({
+                reviews: Schema.Array(
+                  Schema.Struct({
+                    id: Schema.String,
+                    body: Schema.String,
+                    author: Schema.Struct({
+                      login: Schema.String,
+                    }),
+                    state: Schema.String,
+                  }),
+                ),
+              }),
+            ),
+          ),
+        ),
+        Effect.map((_) => _.reviews),
+        Effect.tapError((error) =>
+          Effect.logWarning(`Failed to list reviews for PR #${prNumber}: ${error.message}`),
+        ),
+        Effect.orElseSucceed(constant([])),
+      );
+    });
+
     return {
       getLocalRepo,
       getPrDiff,
@@ -150,6 +265,8 @@ export class GitHubClient extends Effect.Service<GitHubClient>()("@gitai/GitHubC
       listPrComments,
       addPrComment,
       deletePrComment,
+      submitPrReview,
+      listPrReviews,
     } as const;
   }),
 }) {}

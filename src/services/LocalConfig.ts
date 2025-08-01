@@ -1,4 +1,4 @@
-import { FileSystem, Path } from "@effect/platform";
+import { Command, CommandExecutor, FileSystem, Path } from "@effect/platform";
 import { BunContext } from "@effect/platform-bun";
 import { Effect, Option, Schema } from "effect";
 import { AiModel } from "./AiLanguageModel/AiLanguageModel.js";
@@ -26,6 +26,18 @@ export class LocalConfig extends Effect.Service<LocalConfig>()("@gitai/LocalConf
   effect: Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
+    const executor = yield* CommandExecutor.CommandExecutor;
+
+    const getGitUsername = Effect.gen(function* () {
+      const usernameCommand = Command.make("git", "config", "user.name");
+      return yield* executor.string(usernameCommand).pipe(
+        Effect.map((name) => name.trim()),
+        Effect.tapError((error) =>
+          Effect.logWarning(`[LocalConfig]: Failed to get git username: ${error}`),
+        ),
+        Effect.orElseSucceed(() => "unknown-user"),
+      );
+    });
 
     const getConfig: Effect.Effect<LocalConfigSchema> = fs
       .readFileString(path.join(".gitai", "config.json"))
@@ -48,6 +60,7 @@ export class LocalConfig extends Effect.Service<LocalConfig>()("@gitai/LocalConf
 
     return {
       config: yield* getConfig,
+      username: yield* getGitUsername,
     } as const;
   }),
 }) {}

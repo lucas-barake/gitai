@@ -1,7 +1,7 @@
 import { Options } from "@effect/cli";
 import { Context, Effect, Layer, Option } from "effect";
-import type { AiModel } from "./AiLanguageModel/AiLanguageModel.js";
-import { DefaultAiModel, LocalConfig } from "./LocalConfig.js";
+import { LocalConfig } from "./LocalConfig.js";
+import { ModelFamily } from "./WithModel.js";
 
 // -----------------------------------------------------------------------------
 // Options
@@ -21,11 +21,11 @@ export const contextOption = Options.text("context").pipe(
 );
 
 export const modelOption = Options.text("model").pipe(
-  Options.withSchema(DefaultAiModel),
+  Options.withSchema(ModelFamily),
   Options.optional,
   Options.withAlias("m"),
   Options.withDescription(
-    "Select AI model: 'fast' (default, gemini-2.5-flash) or 'accurate' (gemini-2.5-pro)",
+    "Select AI model: sonnet-4.5, opus-4.5, gemini-3-pro (default), or gpt-5.1",
   ),
 );
 
@@ -52,7 +52,7 @@ export interface CliOption<Tag extends string> {
 
 interface OptionValueMap {
   readonly context: FromOptions<typeof contextOption>;
-  readonly model: AiModel;
+  readonly model: ModelFamily;
   readonly contextLines: FromOptions<typeof contextLinesOption>;
 }
 
@@ -123,9 +123,9 @@ export const provideModel = (modelArg: FromOptions<typeof modelOption>) =>
     "model",
     Effect.gen(function* () {
       const localConfig = yield* LocalConfig;
-      const model: AiModel = modelArg.pipe(
+      const model: ModelFamily = modelArg.pipe(
         Option.orElse(() => localConfig.config.defaultModel),
-        Option.getOrElse((): AiModel => "gemini-2.5-flash"),
+        Option.getOrElse((): ModelFamily => "gemini-3-pro"),
       );
       yield* Effect.log(`Using model: ${model}`);
       return model;

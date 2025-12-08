@@ -1,16 +1,7 @@
 import { Command, CommandExecutor, FileSystem, Path } from "@effect/platform";
 import { BunContext } from "@effect/platform-bun";
 import { Effect, Option, Schema } from "effect";
-import { AiModel } from "./AiLanguageModel/AiLanguageModel.js";
-
-export const DefaultAiModel = Schema.Literal("fast", "accurate").pipe(
-  Schema.transform(AiModel, {
-    decode: (value) => (value === "fast" ? "gemini-2.5-flash" : "gemini-2.5-pro"),
-    encode: (value) => (value === "gemini-2.5-flash" ? "fast" : "accurate"),
-    strict: true,
-  }),
-);
-export type DefaultAiModel = typeof DefaultAiModel.Type;
+import { ModelFamily } from "./WithModel.js";
 
 export class LocalConfigSchema extends Schema.Class<LocalConfigSchema>("LocalConfigSchema")({
   rules: Schema.optional(
@@ -18,7 +9,7 @@ export class LocalConfigSchema extends Schema.Class<LocalConfigSchema>("LocalCon
       targetFile: Schema.optionalWith(Schema.String, { as: "Option" }),
     }),
   ),
-  defaultModel: Schema.optionalWith(DefaultAiModel, { as: "Option" }),
+  defaultModel: Schema.optionalWith(ModelFamily, { as: "Option" }),
 }) {}
 
 export class LocalConfig extends Effect.Service<LocalConfig>()("@gitai/LocalConfig", {

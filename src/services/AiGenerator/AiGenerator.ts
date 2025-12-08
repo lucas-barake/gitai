@@ -1,7 +1,8 @@
-import { AiLanguageModel } from "@/services/AiLanguageModel/AiLanguageModel.js";
 import { CliOption } from "@/services/CliOptions.js";
 import type { GitCommit } from "@/services/GitClient.js";
 import { LocalConfig } from "@/services/LocalConfig.js";
+import { WithModel } from "@/services/WithModel.js";
+import * as LanguageModel from "@effect/ai/LanguageModel";
 import { Effect } from "effect";
 import {
   makeChangelogPrompt,
@@ -28,9 +29,9 @@ export const makeReviewCommentTag = (username: string) =>
   `<!-- [gitai-review:${username}](https://github.com/lucas-barake/gitai) -->`;
 
 export class AiGenerator extends Effect.Service<AiGenerator>()("@gitai/AiGenerator", {
-  dependencies: [AiLanguageModel.Default, LocalConfig.Default],
+  dependencies: [WithModel.Default, LocalConfig.Default],
   effect: Effect.gen(function* () {
-    const ai = yield* AiLanguageModel;
+    const { withModel } = yield* WithModel;
     const localConfig = yield* LocalConfig;
 
     const formatPrDescription = (details: PrDetails) => {
@@ -108,20 +109,17 @@ ${fileSummaries}
       const context = yield* CliOption("context");
       const filteredDiff = yield* filterDiff(diff);
 
-      return yield* ai
-        .generateObject({
-          model,
-          prompt: makePrDetailsPrompt(filteredDiff, context),
-          schema: PrDetails,
-          label: "PR details",
-        })
-        .pipe(
-          Effect.map((details) => ({
-            title: details.title,
-            body: formatPrDescription(details),
-          })),
-          orDie("Failed to generate PR details"),
-        );
+      return yield* LanguageModel.generateObject({
+        prompt: makePrDetailsPrompt(filteredDiff, context),
+        schema: PrDetails,
+      }).pipe(
+        withModel(model),
+        Effect.map((response) => ({
+          title: response.value.title,
+          body: formatPrDescription(response.value),
+        })),
+        orDie("Failed to generate PR details"),
+      );
     });
 
     const generateCommitMessage = Effect.fn("AiGenerator.generateCommitMessage")(function* (
@@ -131,17 +129,14 @@ ${fileSummaries}
       const context = yield* CliOption("context");
       const filteredDiff = yield* filterDiff(diff);
 
-      return yield* ai
-        .generateObject({
-          model,
-          prompt: makeCommitMessagePrompt(filteredDiff, context),
-          schema: CommitMessage,
-          label: "commit message",
-        })
-        .pipe(
-          Effect.map((generated) => generated.message),
-          orDie("Failed to generate commit message"),
-        );
+      return yield* LanguageModel.generateObject({
+        prompt: makeCommitMessagePrompt(filteredDiff, context),
+        schema: CommitMessage,
+      }).pipe(
+        withModel(model),
+        Effect.map((response) => response.value.message),
+        orDie("Failed to generate commit message"),
+      );
     });
 
     const generateTitle = Effect.fn("AiGenerator.generateTitle")(function* (diff: string) {
@@ -149,17 +144,14 @@ ${fileSummaries}
       const context = yield* CliOption("context");
       const filteredDiff = yield* filterDiff(diff);
 
-      return yield* ai
-        .generateObject({
-          model,
-          prompt: makeTitlePrompt(filteredDiff, context),
-          schema: PrTitle,
-          label: "PR title",
-        })
-        .pipe(
-          Effect.map((generated) => generated.title),
-          orDie("Failed to generate PR title"),
-        );
+      return yield* LanguageModel.generateObject({
+        prompt: makeTitlePrompt(filteredDiff, context),
+        schema: PrTitle,
+      }).pipe(
+        withModel(model),
+        Effect.map((response) => response.value.title),
+        orDie("Failed to generate PR title"),
+      );
     });
 
     const generateReviewComment = Effect.fn("AiGenerator.generateReviewComment")(function* (
@@ -169,14 +161,14 @@ ${fileSummaries}
       const context = yield* CliOption("context");
       const filteredDiff = yield* filterDiff(diff);
 
-      return yield* ai
-        .generateObject({
-          model,
-          prompt: makeReviewPrompt(filteredDiff, context),
-          schema: PrReviewDetails,
-          label: "PR review comment",
-        })
-        .pipe(Effect.map(formatReviewAsMarkdown), orDie("Failed to generate review comment"));
+      return yield* LanguageModel.generateObject({
+        prompt: makeReviewPrompt(filteredDiff, context),
+        schema: PrReviewDetails,
+      }).pipe(
+        withModel(model),
+        Effect.map((response) => formatReviewAsMarkdown(response.value)),
+        orDie("Failed to generate review comment"),
+      );
     });
 
     const generateChangelog = Effect.fn("AiGenerator.generateChangelog")(function* (
@@ -185,14 +177,14 @@ ${fileSummaries}
       const model = yield* CliOption("model");
       const context = yield* CliOption("context");
 
-      return yield* ai
-        .generateObject({
-          model,
-          prompt: makeChangelogPrompt(commits, context),
-          schema: ChangelogResponse,
-          label: "changelog",
-        })
-        .pipe(orDie("Failed to generate changelog"));
+      return yield* LanguageModel.generateObject({
+        prompt: makeChangelogPrompt(commits, context),
+        schema: ChangelogResponse,
+      }).pipe(
+        withModel(model),
+        Effect.map((response) => response.value),
+        orDie("Failed to generate changelog"),
+      );
     });
 
     const generatePrLineReview = Effect.fn("AiGenerator.generatePrLineReview")(function* (
@@ -202,14 +194,14 @@ ${fileSummaries}
       const context = yield* CliOption("context");
       const filteredDiff = yield* filterDiff(diff);
 
-      return yield* ai
-        .generateObject({
-          model,
-          prompt: makePrLineReviewPrompt(filteredDiff, context),
-          schema: PrReviewDetails,
-          label: "PR line review",
-        })
-        .pipe(orDie("Failed to generate PR line review"));
+      return yield* LanguageModel.generateObject({
+        prompt: makePrLineReviewPrompt(filteredDiff, context),
+        schema: PrReviewDetails,
+      }).pipe(
+        withModel(model),
+        Effect.map((response) => response.value),
+        orDie("Failed to generate PR line review"),
+      );
     });
 
     return {

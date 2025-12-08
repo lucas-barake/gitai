@@ -10,6 +10,18 @@ const PrComment = Schema.Struct({
 
 const PrCommentArray = Schema.Array(PrComment);
 
+const OpenPr = Schema.Struct({
+  number: Schema.Number,
+  title: Schema.String,
+  author: Schema.Struct({
+    login: Schema.String,
+  }),
+});
+
+export type OpenPr = typeof OpenPr.Type;
+
+const OpenPrArray = Schema.Array(OpenPr);
+
 export const RepoWithOwner = Schema.TemplateLiteral(Schema.String, "/", Schema.String).pipe(
   Schema.transform(
     Schema.Struct({
@@ -258,6 +270,25 @@ export class GitHubClient extends Effect.Service<GitHubClient>()("@gitai/GitHubC
       );
     });
 
+    const listOpenPrs = Effect.fn("GitHubClient.listOpenPrs")(function* (repo: RepoWithOwner) {
+      const listPrsCommand = Command.make(
+        "gh",
+        "pr",
+        "list",
+        "-R",
+        repo.string,
+        "--state",
+        "open",
+        "--json",
+        "number,title,author",
+      );
+
+      return yield* executor.string(listPrsCommand).pipe(
+        Effect.flatMap(Schema.decode(Schema.parseJson(OpenPrArray))),
+        Effect.orDieWith(() => "Failed to list open PRs. Is `gh` installed and are you logged in?"),
+      );
+    });
+
     return {
       getLocalRepo,
       getPrDiff,
@@ -267,6 +298,7 @@ export class GitHubClient extends Effect.Service<GitHubClient>()("@gitai/GitHubC
       deletePrComment,
       submitPrReview,
       listPrReviews,
+      listOpenPrs,
     } as const;
   }),
 }) {}

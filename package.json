@@ -17,7 +17,7 @@
     "directory": "dist"
   },
   "scripts": {
-    "check": "tsc -b tsconfig.json",
+    "check": "tsc --noEmit",
     "lint": "eslint \"**/{src,test,examples,scripts,dtslint}/**/*.{ts,mjs}\"",
     "lint-fix": "pnpm lint --fix",
     "test": "vitest",
@@ -28,12 +28,17 @@
     "release": "bun scripts/release.ts"
   },
   "dependencies": {
-    "@effect/ai": "latest",
-    "@effect/ai-google": "latest",
-    "@effect/cli": "latest",
-    "@effect/platform": "latest",
-    "@effect/platform-bun": "latest",
-    "effect": "latest"
+    "@effect/ai": "^0.32.1",
+    "@effect/ai-anthropic": "^0.22.0",
+    "@effect/ai-google": "^0.11.0",
+    "@effect/ai-openai": "^0.36.0",
+    "@effect/cli": "^0.72.1",
+    "@effect/cluster": "^0.55.0",
+    "@effect/experimental": "^0.57.11",
+    "@effect/platform": "^0.93.6",
+    "@effect/platform-bun": "^0.86.0",
+    "@effect/rpc": "^0.72.2",
+    "effect": "^3.19.9"
   },
   "devDependencies": {
     "@babel/cli": "^7.24.8",

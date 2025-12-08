@@ -5,24 +5,31 @@ import {
   provideCliOption,
   provideModel,
 } from "@/services/CliOptions.js";
+import type { GitCommit } from "@/services/GitClient.js";
 import { GitClient } from "@/services/GitClient.js";
-import { Command, Options } from "@effect/cli";
+import { Command, Prompt } from "@effect/cli";
 import { Effect } from "effect";
 
-const fromOption = Options.text("from").pipe(
-  Options.withDescription("Starting commit hash for the changelog range"),
-);
+const formatRelativeDate = (dateString: string): string => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
 
-const toOption = Options.text("to").pipe(
-  Options.withDescription("Ending commit hash for the changelog range (defaults to HEAD)"),
-  Options.withDefault("HEAD"),
-);
+  if (diffDays === 0) return "today";
+  if (diffDays === 1) return "yesterday";
+  if (diffDays < 7) return `${diffDays} days ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+  return `${Math.floor(diffDays / 30)} months ago`;
+};
+
+const formatCommitChoice = (commit: GitCommit): string => {
+  const subject = commit.subject.length > 50 ? commit.subject.slice(0, 47) + "..." : commit.subject;
+  return `${commit.shortHash} - ${subject} (${commit.author}, ${formatRelativeDate(commit.date)})`;
+};
 
 export const ChangelogCommand = Command.make(
   "changelog",
   {
-    from: fromOption,
-    to: toOption,
     contextOption,
     modelOption,
   },
@@ -31,16 +38,71 @@ export const ChangelogCommand = Command.make(
       const gitClient = yield* GitClient;
       const aiGenerator = yield* AiGenerator;
 
-      const fromHash = opts.from;
-      const toHash = opts.to;
+      const allCommits = yield* gitClient.getAllCommits(100);
 
-      console.log(`Generating changelog for range: ${fromHash}..${toHash}`);
+      if (allCommits.length === 0) {
+        return yield* Effect.dieMessage("No commits found in this repository.");
+      }
+
+      if (allCommits.length < 2) {
+        return yield* Effect.dieMessage("Need at least 2 commits to generate a changelog range.");
+      }
+
+      const choices = allCommits.map((commit, index) => ({
+        title: formatCommitChoice(commit),
+        value: { commit, index },
+      }));
+
+      const startSelection = yield* Prompt.select({
+        message: "Select the START commit (older boundary of the range)",
+        choices,
+        maxPerPage: 10,
+      });
+
+      const endChoices = [
+        { title: "HEAD (latest commit)", value: { commit: null as GitCommit | null, index: -1, singleCommit: false } },
+        { title: "Same as START (single commit)", value: { commit: startSelection.commit as GitCommit | null, index: startSelection.index, singleCommit: true } },
+        ...allCommits.map((commit, index) => ({
+          title:
+            index === startSelection.index
+              ? `${formatCommitChoice(commit)} [START]`
+              : formatCommitChoice(commit),
+          value: { commit: commit as GitCommit | null, index, singleCommit: false },
+          disabled: index === startSelection.index,
+        })),
+      ];
+
+      const endSelection = yield* Prompt.select({
+        message: "Select the END commit (newer boundary)",
+        choices: endChoices,
+        maxPerPage: 10,
+      });
+
+      let fromHash: string;
+      let toHash: string;
+
+      if (endSelection.singleCommit) {
+        // Single commit: use parent syntax to include just that commit
+        fromHash = `${startSelection.commit.hash}^`;
+        toHash = startSelection.commit.hash;
+        console.log(`Generating changelog for single commit: ${startSelection.commit.shortHash}`);
+      } else {
+        fromHash = startSelection.commit.hash;
+        toHash = endSelection.commit?.hash ?? "HEAD";
+
+        if (endSelection.index !== -1 && startSelection.index < endSelection.index) {
+          [fromHash, toHash] = [toHash, fromHash];
+          console.log(`Note: Swapped order to generate range ${fromHash}..${toHash}`);
+        }
+
+        console.log(`Generating changelog for range: ${fromHash}..${toHash}`);
+      }
 
       const commits = yield* gitClient.getCommitRange(fromHash, toHash);
 
       if (commits.length === 0) {
         return yield* Effect.dieMessage(
-          `No commits found in range ${fromHash}..${toHash}. Please check your commit hashes.`,
+          `No commits found in range ${fromHash}..${toHash}. Please check your commit selection.`,
         );
       }
 

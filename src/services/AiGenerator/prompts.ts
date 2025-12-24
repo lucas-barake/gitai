@@ -255,21 +255,17 @@ ${makeContextSnippet(context)}
 ## Changelog Requirements
 
 ### Structure
-- Use clean markdown section headers for categories (## Features, ## Bug Fixes, etc.)
+- Group changes by **feature or area of the codebase touched**, NOT by commit type (bug fix, feature, etc.)
+- Use section headers that reflect the actual features/modules affected (e.g., "## Authentication", "## CLI Commands", "## API Client")
 - Each change should be a single bullet point with nested sub-bullets for details
 - Keep entries concise and focused - avoid paragraph-style descriptions
 - Use nested bullet structure: main change → technical details → user impact (if significant)
 
-### Categorization Guidelines
-- **Features**: New functionality, capabilities, or user-facing additions
-- **Bug Fixes**: Corrections to existing functionality
-- **Improvements**: Enhancements to existing features or performance
-- **Refactoring**: Code structure changes without functional impact  
-- **Documentation**: Changes to docs, comments, or README files
-- **Build/CI**: Changes to build system, dependencies, or CI/CD
-- **Testing**: Test additions, modifications, or improvements
-- **Security**: Security-related changes or vulnerability fixes
-- **Breaking Changes**: Changes that break backward compatibility
+### Categorization Strategy
+1. **Identify touched areas**: Look at file paths, module names, and what parts of the system each commit affects
+2. **Group by feature/area**: Create sections based on the features or modules that were modified (e.g., "Authentication", "User Settings", "Build System")
+3. **Single-feature changelogs**: If ALL commits relate to a single feature with no cross-feature changes, use more granular groupings specific to that feature (e.g., for an auth feature: "Token Handling", "Session Management", "Login Flow")
+4. **Cross-cutting concerns**: For changes that affect multiple areas (like a dependency update), either mention in each relevant section or create a "General" section
 
 ### Content Guidelines
 - Write in clear, professional language using concise bullet points
@@ -293,12 +289,13 @@ ${formatCommitsForPrompt(commits)}
 ## Output Requirements
 
 Generate a professional changelog in markdown format that:
-1. Uses clean section headers WITHOUT any emojis or decorative symbols (e.g., "## Features", "## Bug Fixes")
+1. Uses section headers based on **features/areas touched** (e.g., "## CLI Commands", "## Git Integration"), NOT commit types
 2. Each change is a single bullet point with nested sub-bullets for technical details
 3. Maintains concise, professional descriptions - avoid verbose paragraph-style text
-4. Groups commits into logical categories
+4. Groups commits by the feature or module they affect
 5. Uses nested bullet structure for hierarchy (-, --, ---)
 6. Omits trivial changes unless they have meaningful impact
+7. Uses clean section headers WITHOUT any emojis or decorative symbols
 
 CRITICAL: Your output must be completely free of emojis, emoji symbols, or decorative characters. Keep it concise with bullet points only.
 

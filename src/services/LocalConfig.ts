@@ -1,7 +1,6 @@
 import { Command, CommandExecutor, FileSystem, Path } from "@effect/platform";
 import { BunContext } from "@effect/platform-bun";
-import { Effect, Option, Schema } from "effect";
-import { ModelFamily } from "./WithModel.js";
+import { Effect, Schema } from "effect";
 
 export class LocalConfigSchema extends Schema.Class<LocalConfigSchema>("LocalConfigSchema")({
   rules: Schema.optional(
@@ -9,7 +8,6 @@ export class LocalConfigSchema extends Schema.Class<LocalConfigSchema>("LocalCon
       targetFile: Schema.optionalWith(Schema.String, { as: "Option" }),
     }),
   ),
-  defaultModel: Schema.optionalWith(ModelFamily, { as: "Option" }),
 }) {}
 
 export class LocalConfig extends Effect.Service<LocalConfig>()("@gitai/LocalConfig", {
@@ -42,11 +40,7 @@ export class LocalConfig extends Effect.Service<LocalConfig>()("@gitai/LocalConf
         Effect.tapError((error) =>
           Effect.logWarning(`[LocalConfig]: Failed to read config: ${error.message}`),
         ),
-        Effect.orElseSucceed(
-          (): LocalConfigSchema => ({
-            defaultModel: Option.none(),
-          }),
-        ),
+        Effect.orElseSucceed((): LocalConfigSchema => ({})),
       );
 
     return {

@@ -1,11 +1,5 @@
 import { AiGenerator, makeReviewCommentTag } from "@/services/AiGenerator/AiGenerator.js";
-import {
-  contextOption,
-  modelOption,
-  provideCliOption,
-  provideModel,
-  repoOption,
-} from "@/services/CliOptions.js";
+import { contextOption, provideCliOption, provideModel, repoOption } from "@/services/CliOptions.js";
 import { GitHubClient, type OpenPr, RepoWithOwner } from "@/services/GitHubClient.js";
 import { LocalConfig } from "@/services/LocalConfig.js";
 import { Command, Prompt } from "@effect/cli";
@@ -18,7 +12,7 @@ const formatPrChoice = (pr: OpenPr): string => {
 
 export const GhCommand = Command.make(
   "gh",
-  { repoOption, contextOption, modelOption },
+  { repoOption, contextOption },
   (opts) =>
     Effect.gen(function* () {
       const ai = yield* AiGenerator;
@@ -180,5 +174,5 @@ Generated ${reviewComments.length} review comment${reviewComments.length === 1 ?
           break;
         }
       }
-    }).pipe(provideCliOption("context", opts.contextOption), provideModel(opts.modelOption)),
+    }).pipe(provideCliOption("context", opts.contextOption), provideModel()),
 );

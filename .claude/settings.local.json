@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__effect-docs__effect_doc_search",
+      "mcp__effect-docs__get_effect_doc"
+    ],
+    "deny": []
+  }
+}

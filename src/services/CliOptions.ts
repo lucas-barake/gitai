@@ -1,6 +1,5 @@
-import { Options } from "@effect/cli";
-import { Context, Effect, Layer, Option } from "effect";
-import { LocalConfig } from "./LocalConfig.js";
+import { Options, Prompt } from "@effect/cli";
+import { Context, Effect, Layer } from "effect";
 import { ModelFamily } from "./WithModel.js";
 
 // -----------------------------------------------------------------------------
@@ -18,15 +17,6 @@ export const contextOption = Options.text("context").pipe(
   Options.optional,
   Options.withAlias("c"),
   Options.withDescription("Provide extra context to the AI for generating content."),
-);
-
-export const modelOption = Options.text("model").pipe(
-  Options.withSchema(ModelFamily),
-  Options.optional,
-  Options.withAlias("m"),
-  Options.withDescription(
-    "Select AI model: sonnet-4.5, opus-4.5, gemini-3-pro (default), or gpt-5.1",
-  ),
 );
 
 export const contextLinesOption = Options.integer("contextLines").pipe(
@@ -118,16 +108,22 @@ export const provideCliOptionEffect =
 // Providers
 // -----------------------------------------------------------------------------
 
-export const provideModel = (modelArg: FromOptions<typeof modelOption>) =>
+export const provideModel = () =>
   provideCliOptionEffect(
     "model",
-    Effect.gen(function* () {
-      const localConfig = yield* LocalConfig;
-      const model: ModelFamily = modelArg.pipe(
-        Option.orElse(() => localConfig.config.defaultModel),
-        Option.getOrElse((): ModelFamily => "gemini-3-pro"),
-      );
-      yield* Effect.log(`Using model: ${model}`);
-      return model;
+    Prompt.select({
+      message: "Select AI model",
+      choices: [
+        // Google
+        { title: "Gemini 3 Pro (Recommended)", value: "gemini-3-pro" as const },
+        { title: "Gemini 3 Flash", value: "gemini-3-flash" as const },
+        // Anthropic
+        { title: "Opus 4.5", value: "opus-4.5" as const },
+        { title: "Sonnet 4.5", value: "sonnet-4.5" as const },
+        { title: "Haiku 4.5", value: "haiku-4.5" as const },
+        // OpenAI
+        { title: "GPT 5.2", value: "gpt-5.2" as const },
+        { title: "GPT 5.1", value: "gpt-5.1" as const },
+      ],
     }),
   );

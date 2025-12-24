@@ -1,10 +1,5 @@
 import { AiGenerator } from "@/services/AiGenerator/AiGenerator.js";
-import {
-  contextOption,
-  modelOption,
-  provideCliOption,
-  provideModel,
-} from "@/services/CliOptions.js";
+import { contextOption, provideCliOption, provideModel } from "@/services/CliOptions.js";
 import type { GitCommit } from "@/services/GitClient.js";
 import { GitClient } from "@/services/GitClient.js";
 import { Command, Prompt } from "@effect/cli";
@@ -31,7 +26,6 @@ export const ChangelogCommand = Command.make(
   "changelog",
   {
     contextOption,
-    modelOption,
   },
   (opts) =>
     Effect.gen(function* () {
@@ -114,5 +108,5 @@ export const ChangelogCommand = Command.make(
       console.log("GENERATED CHANGELOG");
       console.log("=".repeat(80) + "\n");
       console.log(changelog.changelog);
-    }).pipe(provideCliOption("context", opts.contextOption), provideModel(opts.modelOption)),
+    }).pipe(provideCliOption("context", opts.contextOption), provideModel()),
 );

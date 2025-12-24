@@ -1,18 +1,12 @@
 import { AiGenerator } from "@/services/AiGenerator/AiGenerator.js";
-import {
-  contextLinesOption,
-  contextOption,
-  modelOption,
-  provideCliOption,
-  provideModel,
-} from "@/services/CliOptions.js";
+import { contextLinesOption, contextOption, provideCliOption, provideModel } from "@/services/CliOptions.js";
 import { GitClient } from "@/services/GitClient.js";
 import { Command, Prompt } from "@effect/cli";
 import { Effect, String } from "effect";
 
 export const CommitCommand = Command.make(
   "commit",
-  { contextOption, contextLinesOption, modelOption },
+  { contextOption, contextLinesOption },
   (opts) =>
     Effect.gen(function* () {
       const ai = yield* AiGenerator;
@@ -37,6 +31,6 @@ export const CommitCommand = Command.make(
     }).pipe(
       provideCliOption("contextLines", opts.contextLinesOption),
       provideCliOption("context", opts.contextOption),
-      provideModel(opts.modelOption),
+      provideModel(),
     ),
 );

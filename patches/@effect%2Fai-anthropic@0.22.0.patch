@@ -1,0 +1,365 @@
+diff --git a/node_modules/@effect/ai-anthropic/.bun-tag-1bbb88a28492abf9 b/.bun-tag-1bbb88a28492abf9
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/node_modules/@effect/ai-anthropic/.bun-tag-2442e812b67fbc06 b/.bun-tag-2442e812b67fbc06
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/node_modules/@effect/ai-anthropic/.bun-tag-ec1e8d3ae8475cb8 b/.bun-tag-ec1e8d3ae8475cb8
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/dist/cjs/AnthropicLanguageModel.js b/dist/cjs/AnthropicLanguageModel.js
+index 5a9b861f42adcd5971b53d1780ba2e1a320ddba8..512d6a1450f46e50f95639bfc32c52a40ef7b36e 100644
+--- a/dist/cjs/AnthropicLanguageModel.js
++++ b/dist/cjs/AnthropicLanguageModel.js
+@@ -92,19 +92,16 @@ const make = exports.make = /*#__PURE__*/Effect.fnUntraced(function* (options) {
+       ...config,
+       system,
+       messages,
+-      tools: responseFormat.type === "text" ? tools : [{
+-        name: responseFormat.objectName,
+-        description: Tool.getDescriptionFromSchemaAst(responseFormat.schema.ast) ?? "Respond with a JSON object",
+-        input_schema: Tool.getJsonSchemaFromSchemaAst(responseFormat.schema.ast)
+-      }],
+-      tool_choice: responseFormat.type === "text" ? toolChoice : {
+-        type: "tool",
+-        name: responseFormat.objectName,
+-        disable_parallel_tool_use: true
+-      }
++      tools,
++      tool_choice: toolChoice,
++      output_format: responseFormat.type === "json" ? {
++        type: "json_schema",
++        schema: Tool.getJsonSchemaFromSchemaAst(responseFormat.schema.ast)
++      } : undefined
+     };
++    const structuredOutputsBeta = responseFormat.type === "json" ? ["structured-outputs-2025-11-13"] : [];
+     return {
+-      betas: new Set([...messageBetas, ...toolBetas]),
++      betas: new Set([...messageBetas, ...toolBetas, ...structuredOutputsBeta]),
+       request
+     };
+   });
+@@ -437,21 +434,17 @@ const makeResponse = /*#__PURE__*/Effect.fnUntraced(function* (response, options
+     switch (part.type) {
+       case "text":
+         {
+-          // The text parts should only be added to the response here if the
+-          // response format is `"text"`. If the response format is `"json"`,
+-          // then the text parts must instead be added to the response when a
+-          // tool call is received.
+-          if (options.responseFormat.type === "text") {
+-            parts.push({
+-              type: "text",
+-              text: part.text
+-            });
+-            if (Predicate.isNotNullable(part.citations)) {
+-              for (const citation of part.citations) {
+-                const source = yield* processCitation(citation, citableDocuments, idGenerator);
+-                if (Predicate.isNotUndefined(source)) {
+-                  parts.push(source);
+-                }
++          // Text parts are always added to the response.
++          // When using output_format for JSON, the structured output comes back as text.
++          parts.push({
++            type: "text",
++            text: part.text
++          });
++          if (Predicate.isNotNullable(part.citations)) {
++            for (const citation of part.citations) {
++              const source = yield* processCitation(citation, citableDocuments, idGenerator);
++              if (Predicate.isNotUndefined(source)) {
++                parts.push(source);
+               }
+             }
+           }
+@@ -487,26 +480,19 @@ const makeResponse = /*#__PURE__*/Effect.fnUntraced(function* (response, options
+         }
+       case "tool_use":
+         {
+-          // When a `"json"` response format is requested, the JSON that we need
+-          // will be returned by the tool call injected into the request
+-          if (options.responseFormat.type === "json") {
+-            parts.push({
+-              type: "text",
+-              text: JSON.stringify(part.input)
+-            });
+-          } else {
+-            const providerTool = AnthropicTool.getProviderDefinedToolName(part.name);
+-            const name = Predicate.isNotUndefined(providerTool) ? providerTool : part.name;
+-            const providerName = Predicate.isNotUndefined(providerTool) ? part.name : undefined;
+-            parts.push({
+-              type: "tool-call",
+-              id: part.id,
+-              name,
+-              params: part.input,
+-              providerName,
+-              providerExecuted: false
+-            });
+-          }
++          // Tool use is handled as a normal tool call.
++          // With output_format, structured output comes as text, not tool_use.
++          const providerTool = AnthropicTool.getProviderDefinedToolName(part.name);
++          const name = Predicate.isNotUndefined(providerTool) ? providerTool : part.name;
++          const providerName = Predicate.isNotUndefined(providerTool) ? part.name : undefined;
++          parts.push({
++            type: "tool-call",
++            id: part.id,
++            name,
++            params: part.input,
++            providerName,
++            providerExecuted: false
++          });
+           break;
+         }
+       case "server_tool_use":
+diff --git a/dist/esm/AnthropicLanguageModel.js b/dist/esm/AnthropicLanguageModel.js
+index 59079d16761e7f8e9d5ff32fc27f2eda66c13a89..3162e65a612957922ef4fdd0b0a750f8193c3ae5 100644
+--- a/dist/esm/AnthropicLanguageModel.js
++++ b/dist/esm/AnthropicLanguageModel.js
+@@ -81,19 +81,16 @@ export const make = /*#__PURE__*/Effect.fnUntraced(function* (options) {
+       ...config,
+       system,
+       messages,
+-      tools: responseFormat.type === "text" ? tools : [{
+-        name: responseFormat.objectName,
+-        description: Tool.getDescriptionFromSchemaAst(responseFormat.schema.ast) ?? "Respond with a JSON object",
+-        input_schema: Tool.getJsonSchemaFromSchemaAst(responseFormat.schema.ast)
+-      }],
+-      tool_choice: responseFormat.type === "text" ? toolChoice : {
+-        type: "tool",
+-        name: responseFormat.objectName,
+-        disable_parallel_tool_use: true
+-      }
++      tools,
++      tool_choice: toolChoice,
++      output_format: responseFormat.type === "json" ? {
++        type: "json_schema",
++        schema: Tool.getJsonSchemaFromSchemaAst(responseFormat.schema.ast)
++      } : undefined
+     };
++    const structuredOutputsBeta = responseFormat.type === "json" ? ["structured-outputs-2025-11-13"] : [];
+     return {
+-      betas: new Set([...messageBetas, ...toolBetas]),
++      betas: new Set([...messageBetas, ...toolBetas, ...structuredOutputsBeta]),
+       request
+     };
+   });
+@@ -424,21 +421,17 @@ const makeResponse = /*#__PURE__*/Effect.fnUntraced(function* (response, options
+     switch (part.type) {
+       case "text":
+         {
+-          // The text parts should only be added to the response here if the
+-          // response format is `"text"`. If the response format is `"json"`,
+-          // then the text parts must instead be added to the response when a
+-          // tool call is received.
+-          if (options.responseFormat.type === "text") {
+-            parts.push({
+-              type: "text",
+-              text: part.text
+-            });
+-            if (Predicate.isNotNullable(part.citations)) {
+-              for (const citation of part.citations) {
+-                const source = yield* processCitation(citation, citableDocuments, idGenerator);
+-                if (Predicate.isNotUndefined(source)) {
+-                  parts.push(source);
+-                }
++          // Text parts are always added to the response.
++          // When using output_format for JSON, the structured output comes back as text.
++          parts.push({
++            type: "text",
++            text: part.text
++          });
++          if (Predicate.isNotNullable(part.citations)) {
++            for (const citation of part.citations) {
++              const source = yield* processCitation(citation, citableDocuments, idGenerator);
++              if (Predicate.isNotUndefined(source)) {
++                parts.push(source);
+               }
+             }
+           }
+@@ -474,26 +467,19 @@ const makeResponse = /*#__PURE__*/Effect.fnUntraced(function* (response, options
+         }
+       case "tool_use":
+         {
+-          // When a `"json"` response format is requested, the JSON that we need
+-          // will be returned by the tool call injected into the request
+-          if (options.responseFormat.type === "json") {
+-            parts.push({
+-              type: "text",
+-              text: JSON.stringify(part.input)
+-            });
+-          } else {
+-            const providerTool = AnthropicTool.getProviderDefinedToolName(part.name);
+-            const name = Predicate.isNotUndefined(providerTool) ? providerTool : part.name;
+-            const providerName = Predicate.isNotUndefined(providerTool) ? part.name : undefined;
+-            parts.push({
+-              type: "tool-call",
+-              id: part.id,
+-              name,
+-              params: part.input,
+-              providerName,
+-              providerExecuted: false
+-            });
+-          }
++          // Tool use is handled as a normal tool call.
++          // With output_format, structured output comes as text, not tool_use.
++          const providerTool = AnthropicTool.getProviderDefinedToolName(part.name);
++          const name = Predicate.isNotUndefined(providerTool) ? providerTool : part.name;
++          const providerName = Predicate.isNotUndefined(providerTool) ? part.name : undefined;
++          parts.push({
++            type: "tool-call",
++            id: part.id,
++            name,
++            params: part.input,
++            providerName,
++            providerExecuted: false
++          });
+           break;
+         }
+       case "server_tool_use":
+diff --git a/src/AnthropicLanguageModel.ts b/src/AnthropicLanguageModel.ts
+index e73576c7e8b9d12af08664a8ebde67333a5ff74d..19d2cea9ec1ae3d7e18ab330fe3b6f374ad48e61 100644
+--- a/src/AnthropicLanguageModel.ts
++++ b/src/AnthropicLanguageModel.ts
+@@ -333,22 +333,17 @@ export const make = Effect.fnUntraced(function*(options: {
+         ...config,
+         system,
+         messages,
+-        tools: responseFormat.type === "text"
+-          ? tools
+-          : [{
+-            name: responseFormat.objectName,
+-            description: Tool.getDescriptionFromSchemaAst(responseFormat.schema.ast) ?? "Respond with a JSON object",
+-            input_schema: Tool.getJsonSchemaFromSchemaAst(responseFormat.schema.ast) as any
+-          }],
+-        tool_choice: responseFormat.type === "text"
+-          ? toolChoice
+-          : {
+-            type: "tool",
+-            name: responseFormat.objectName,
+-            disable_parallel_tool_use: true
++        tools,
++        tool_choice: toolChoice,
++        output_format: responseFormat.type === "json"
++          ? {
++            type: "json_schema",
++            schema: Tool.getJsonSchemaFromSchemaAst(responseFormat.schema.ast) as any
+           }
++          : undefined
+       }
+-      return { betas: new Set([...messageBetas, ...toolBetas]), request }
++      const structuredOutputsBeta = responseFormat.type === "json" ? ["structured-outputs-2025-11-13"] : []
++      return { betas: new Set([...messageBetas, ...toolBetas, ...structuredOutputsBeta]), request }
+     }
+   )
+ 
+@@ -754,22 +749,18 @@ const makeResponse: (
+     for (const part of response.content) {
+       switch (part.type) {
+         case "text": {
+-          // The text parts should only be added to the response here if the
+-          // response format is `"text"`. If the response format is `"json"`,
+-          // then the text parts must instead be added to the response when a
+-          // tool call is received.
+-          if (options.responseFormat.type === "text") {
+-            parts.push({
+-              type: "text",
+-              text: part.text
+-            })
++          // Text parts are always added to the response.
++          // When using output_format for JSON, the structured output comes back as text.
++          parts.push({
++            type: "text",
++            text: part.text
++          })
+ 
+-            if (Predicate.isNotNullable(part.citations)) {
+-              for (const citation of part.citations) {
+-                const source = yield* processCitation(citation, citableDocuments, idGenerator)
+-                if (Predicate.isNotUndefined(source)) {
+-                  parts.push(source)
+-                }
++          if (Predicate.isNotNullable(part.citations)) {
++            for (const citation of part.citations) {
++              const source = yield* processCitation(citation, citableDocuments, idGenerator)
++              if (Predicate.isNotUndefined(source)) {
++                parts.push(source)
+               }
+             }
+           }
+@@ -796,26 +787,19 @@ const makeResponse: (
+         }
+ 
+         case "tool_use": {
+-          // When a `"json"` response format is requested, the JSON that we need
+-          // will be returned by the tool call injected into the request
+-          if (options.responseFormat.type === "json") {
+-            parts.push({
+-              type: "text",
+-              text: JSON.stringify(part.input)
+-            })
+-          } else {
+-            const providerTool = AnthropicTool.getProviderDefinedToolName(part.name)
+-            const name = Predicate.isNotUndefined(providerTool) ? providerTool : part.name
+-            const providerName = Predicate.isNotUndefined(providerTool) ? part.name : undefined
+-            parts.push({
+-              type: "tool-call",
+-              id: part.id,
+-              name,
+-              params: part.input,
+-              providerName,
+-              providerExecuted: false
+-            })
+-          }
++          // Tool use is handled as a normal tool call.
++          // With output_format, structured output comes as text, not tool_use.
++          const providerTool = AnthropicTool.getProviderDefinedToolName(part.name)
++          const name = Predicate.isNotUndefined(providerTool) ? providerTool : part.name
++          const providerName = Predicate.isNotUndefined(providerTool) ? part.name : undefined
++          parts.push({
++            type: "tool-call",
++            id: part.id,
++            name,
++            params: part.input,
++            providerName,
++            providerExecuted: false
++          })
+ 
+           break
+         }
+diff --git a/src/Generated.ts b/src/Generated.ts
+index dcb4afdadcd1c616a3fea78376802033d8c20e1e..02e79716c218af17f35b28ea1680d5f244246832 100644
+--- a/src/Generated.ts
++++ b/src/Generated.ts
+@@ -3658,6 +3658,19 @@ export class BetaWebFetchTool20250910 extends S.Class<BetaWebFetchTool20250910>(
+   "type": S.Literal("web_fetch_20250910")
+ }) {}
+ 
++/**
++ * JSON schema output format for structured outputs.
++ */
++export class BetaJsonSchemaOutputFormat extends S.Class<BetaJsonSchemaOutputFormat>("BetaJsonSchemaOutputFormat")({
++  "type": S.Literal("json_schema"),
++  "schema": S.Record({ key: S.String, value: S.Unknown })
++}) {}
++
++/**
++ * Output format configuration for structured outputs.
++ */
++export const BetaOutputFormat = S.Union(BetaJsonSchemaOutputFormat)
++
+ export class BetaCreateMessageParams extends S.Class<BetaCreateMessageParams>("BetaCreateMessageParams")({
+   "model": S.Union(S.String, Model),
+   /**
+@@ -3772,6 +3785,11 @@ export class BetaCreateMessageParams extends S.Class<BetaCreateMessageParams>("B
+    */
+   "temperature": S.optionalWith(S.Number.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1)), { nullable: true }),
+   "thinking": S.optionalWith(BetaThinkingConfigParam, { nullable: true }),
++  /**
++   * Configuration for structured output format using JSON schema.
++   * Requires beta header: structured-outputs-2025-11-13
++   */
++  "output_format": S.optionalWith(BetaOutputFormat, { nullable: true }),
+   "tool_choice": S.optionalWith(BetaToolChoice, { nullable: true }),
+   /**
+    * Definitions of tools that the model may use.

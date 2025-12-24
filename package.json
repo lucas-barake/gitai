@@ -81,9 +81,8 @@
       ]
     }
   },
-  "pnpm": {
-    "patchedDependencies": {
-      "babel-plugin-annotate-pure-calls@0.4.0": "patches/babel-plugin-annotate-pure-calls@0.4.0.patch"
-    }
+  "patchedDependencies": {
+    "babel-plugin-annotate-pure-calls@0.4.0": "patches/babel-plugin-annotate-pure-calls@0.4.0.patch",
+    "@effect/ai-anthropic@0.22.0": "patches/@effect%2Fai-anthropic@0.22.0.patch"
   }
 }

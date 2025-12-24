@@ -81,13 +81,28 @@ export const ChangelogCommand = Command.make(
         toHash = startSelection.commit.hash;
         console.log(`Generating changelog for single commit: ${startSelection.commit.shortHash}`);
       } else {
-        fromHash = startSelection.commit.hash;
-        toHash = endSelection.commit?.hash ?? "HEAD";
+        let olderHash: string;
+        let newerHash: string;
 
-        if (endSelection.index !== -1 && startSelection.index < endSelection.index) {
-          [fromHash, toHash] = [toHash, fromHash];
-          console.log(`Note: Swapped order to generate range ${fromHash}..${toHash}`);
+        // Lower index = newer commit in git log output
+        if (endSelection.index === -1) {
+          // HEAD selected as end - start is always older
+          olderHash = startSelection.commit.hash;
+          newerHash = "HEAD";
+        } else if (startSelection.index < endSelection.index) {
+          // start has lower index, so start is newer, end is older - swap them
+          olderHash = endSelection.commit!.hash;
+          newerHash = startSelection.commit.hash;
+          console.log(`Note: Swapped order to generate range ${olderHash}^..${newerHash}`);
+        } else {
+          // start has higher index, so start is older, end is newer
+          olderHash = startSelection.commit.hash;
+          newerHash = endSelection.commit!.hash;
         }
+
+        // Use parent syntax on older commit to include it in the range
+        fromHash = `${olderHash}^`;
+        toHash = newerHash;
 
         console.log(`Generating changelog for range: ${fromHash}..${toHash}`);
       }

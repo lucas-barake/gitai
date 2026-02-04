@@ -123,5 +123,5 @@ export const ChangelogCommand = Command.make(
       console.log("GENERATED CHANGELOG");
       console.log("=".repeat(80) + "\n");
       console.log(changelog.changelog);
-    }).pipe(provideCliOption("context", opts.contextOption), provideModel()),
+    }).pipe(provideCliOption("context", opts.contextOption), provideModel("changelog")),
 );

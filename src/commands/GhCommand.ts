@@ -174,5 +174,5 @@ Generated ${reviewComments.length} review comment${reviewComments.length === 1 ?
           break;
         }
       }
-    }).pipe(provideCliOption("context", opts.contextOption), provideModel()),
+    }).pipe(provideCliOption("context", opts.contextOption), provideModel("gh")),
 );

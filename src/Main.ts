@@ -5,16 +5,16 @@ import { Cause, Chunk, Effect, Layer, Logger } from "effect";
 import { ChangelogCommand } from "./commands/ChangelogCommand.js";
 import { CommitCommand } from "./commands/CommitCommand.js";
 import { GhCommand } from "./commands/GhCommand.js";
-import { RulesCommand } from "./commands/RulesCommand.js";
 import { AiGenerator } from "./services/AiGenerator/index.js";
 import { cliLogger } from "./services/CliLogger.js";
 import { GitClient } from "./services/GitClient.js";
 import { GitHubClient } from "./services/GitHubClient.js";
 import { LocalConfig } from "./services/LocalConfig.js";
+import { UserPreferences } from "./services/UserPreferences.js";
 import { WithModel } from "./services/WithModel.js";
 
 const MainCommand = Command.make("gitai").pipe(
-  Command.withSubcommands([GhCommand, CommitCommand, RulesCommand, ChangelogCommand]),
+  Command.withSubcommands([GhCommand, CommitCommand, ChangelogCommand]),
 );
 
 const cli = Command.run(MainCommand, {
@@ -29,6 +29,7 @@ const MainLayer = Layer.mergeAll(
   GitHubClient.Default,
   GitClient.Default,
   LocalConfig.Default,
+  UserPreferences.Default,
   BunContext.layer,
 ).pipe(Layer.provideMerge(Logger.replace(Logger.defaultLogger, cliLogger)));
 

@@ -1,6 +1,7 @@
 import { Options, Prompt } from "@effect/cli";
 import { Context, Effect, Layer } from "effect";
-import { ModelFamily } from "./WithModel.js";
+import { type CommandName, UserPreferences, type UserPreferencesSchema } from "./UserPreferences.js";
+import { type ModelFamily } from "./WithModel.js";
 
 // -----------------------------------------------------------------------------
 // Options
@@ -108,22 +109,71 @@ export const provideCliOptionEffect =
 // Providers
 // -----------------------------------------------------------------------------
 
-export const provideModel = () =>
+const MODEL_DISPLAY_NAMES: Record<ModelFamily, string> = {
+  "gemini-3-pro": "Gemini 3 Pro",
+  "gemini-3-flash": "Gemini 3 Flash",
+  "opus-4.5": "Opus 4.5",
+  "sonnet-4.5": "Sonnet 4.5",
+  "haiku-4.5": "Haiku 4.5",
+  "gpt-5.2": "GPT 5.2",
+  "gpt-5.1": "GPT 5.1",
+};
+
+const ALL_MODELS: ReadonlyArray<ModelFamily> = [
+  "gemini-3-pro",
+  "gemini-3-flash",
+  "opus-4.5",
+  "sonnet-4.5",
+  "haiku-4.5",
+  "gpt-5.2",
+  "gpt-5.1",
+];
+
+export const buildModelChoices = (
+  prefs: UserPreferencesSchema,
+  command: CommandName,
+): ReadonlyArray<{ readonly title: string; readonly value: ModelFamily }> => {
+  const lastUsedForCommand = prefs.lastUsedModelByCommand?.[command];
+  const usageCounts = prefs.modelUsageCounts ?? {};
+
+  const formatTitle = (model: ModelFamily): string => {
+    const displayName = MODEL_DISPLAY_NAMES[model];
+    const count = usageCounts[model];
+    return count !== undefined && count > 0 ? `${displayName} (${count})` : displayName;
+  };
+
+  const otherModels = ALL_MODELS.filter((m): m is ModelFamily => m !== lastUsedForCommand);
+  const sortedOthers = [...otherModels].sort((a, b) => {
+    const countA = usageCounts[a] ?? 0;
+    const countB = usageCounts[b] ?? 0;
+    return countB - countA;
+  });
+
+  const orderedModels: ReadonlyArray<ModelFamily> = lastUsedForCommand !== undefined
+    ? [lastUsedForCommand, ...sortedOthers]
+    : sortedOthers;
+
+  return orderedModels.map((model) => ({
+    title: formatTitle(model),
+    value: model,
+  }));
+};
+
+export const provideModel = (command: CommandName) =>
   provideCliOptionEffect(
     "model",
-    Prompt.select({
-      message: "Select AI model",
-      choices: [
-        // Google
-        { title: "Gemini 3 Pro (Recommended)", value: "gemini-3-pro" as const },
-        { title: "Gemini 3 Flash", value: "gemini-3-flash" as const },
-        // Anthropic
-        { title: "Opus 4.5", value: "opus-4.5" as const },
-        { title: "Sonnet 4.5", value: "sonnet-4.5" as const },
-        { title: "Haiku 4.5", value: "haiku-4.5" as const },
-        // OpenAI
-        { title: "GPT 5.2", value: "gpt-5.2" as const },
-        { title: "GPT 5.1", value: "gpt-5.1" as const },
-      ],
+    Effect.gen(function* () {
+      const userPrefs = yield* UserPreferences;
+      const prefs = yield* userPrefs.getPreferences;
+      const choices = buildModelChoices(prefs, command);
+
+      const selectedModel = yield* Prompt.select({
+        message: "Select AI model",
+        choices: [...choices],
+      });
+
+      yield* userPrefs.recordModelUsage(command, selectedModel);
+
+      return selectedModel;
     }),
   );

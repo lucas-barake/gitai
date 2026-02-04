@@ -31,6 +31,6 @@ export const CommitCommand = Command.make(
     }).pipe(
       provideCliOption("contextLines", opts.contextLinesOption),
       provideCliOption("context", opts.contextOption),
-      provideModel(),
+      provideModel("commit"),
     ),
 );

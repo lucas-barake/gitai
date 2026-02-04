@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest";
 import { Effect, Option } from "effect";
-import { buildModelChoices, CliOption, provideCliOption, provideCliOptionEffect } from "../src/services/CliOptions.js";
-import { UserPreferencesSchema } from "../src/services/UserPreferences.js";
+import { buildModelChoices, CliOption, provideCliOption, provideCliOptionEffect } from "./CliOptions.js";
+import { UserPreferencesSchema } from "./UserPreferences.js";
 
 describe("CliOptions", () => {
   it.effect(

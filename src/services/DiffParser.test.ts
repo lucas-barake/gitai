@@ -4,7 +4,7 @@ import {
   parseDiff,
   transformDiffForLLM,
   type ParsedFileDiff,
-} from "../src/services/DiffParser.js";
+} from "./DiffParser.js";
 
 describe("DiffParser", () => {
   describe("parseDiff", () => {

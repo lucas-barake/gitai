@@ -3,9 +3,9 @@ import { assert, describe, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
-import * as NodePath from "node:path";
 import * as os from "node:os";
-import { UserPreferences, UserPreferencesSchema } from "../src/services/UserPreferences.js";
+import * as NodePath from "node:path";
+import { UserPreferences, UserPreferencesSchema } from "./UserPreferences.js";
 
 const getPreferencesPath = (): string =>
   NodePath.join(os.homedir(), ".config/gitai/preferences.json");
@@ -18,7 +18,11 @@ const makeMockFileSystem = (fileContents: Record<string, string>) => {
       Effect.gen(function* () {
         const content = files.get(path);
         if (content === undefined) {
-          return yield* Effect.fail({ _tag: "SystemError", reason: "NotFound", message: "File not found" } as const);
+          return yield* Effect.fail({
+            _tag: "SystemError",
+            reason: "NotFound",
+            message: "File not found",
+          } as const);
         }
         return content;
       }),
